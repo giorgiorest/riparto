@@ -60,6 +60,33 @@ public class Controller {
 		return "FINE RIPARTO IN: " + String.valueOf(sw.getTotalTimeSeconds()) +"  ->  "+ gc.get(Calendar.HOUR_OF_DAY)+":"+gc.get(Calendar.MINUTE);
 	}
 
+	@RequestMapping(value = "/eseguilocal",method = RequestMethod.GET)
+	public String getRipartoLocal(HttpServletResponse response) {
+
+		StopWatch sw = new StopWatch();
+		try {
+			sw.start();
+			
+			log.info("RECUPERO DATI--------");
+			List<Base> baseList = getDataLocal();
+			log.info("DATI RECUPERATI--------");
+			
+			RipartoCamera riparto = new RipartoCamera(baseList);
+			
+			riparto.eseguiRiparto();
+			
+			log.info("FINE RIPARTO");
+			sw.stop();
+		} catch (Exception e) {
+			e.printStackTrace();
+			return "ERRORE RIPARTO ";
+		}
+		
+		Calendar gc = GregorianCalendar.getInstance();
+
+		return "FINE RIPARTO IN: " + String.valueOf(sw.getTotalTimeSeconds()) +"  ->  "+ gc.get(Calendar.HOUR_OF_DAY)+":"+gc.get(Calendar.MINUTE);
+	}
+	
 	@SuppressWarnings("deprecation")
 	public List<Base> getData() {
 
@@ -119,5 +146,63 @@ public class Controller {
 
 		return baseList;
 
+	}
+	
+	
+	public List<Base> getDataLocal() {
+		
+		String queryNew = "SELECT * FROM PROVA_RIPARTO";
+		
+		List<Base> baseList = new ArrayList<>();
+		
+		AtomicInteger i = new AtomicInteger();
+		
+		jdbcTemplate.query(queryNew, new ResultSetExtractor<List<Object[]>>() {
+			
+			@Override
+			public List<Object[]> extractData(ResultSet rs) throws SQLException, DataAccessException {
+				while (rs.next()) {
+					
+					i.set(1);
+					
+					Base b = new Base();
+					
+					b.setIdCandidato(rs.getInt(i.getAndIncrement()));
+					b.setNome(rs.getString(i.getAndIncrement()));
+					b.setCognome(rs.getString(i.getAndIncrement()));
+					b.setDataNascita(rs.getDate(i.getAndIncrement()));
+					b.setIdTerpaCandidato(rs.getInt(i.getAndIncrement()));
+					b.setDescTerpaCandidato(rs.getString(i.getAndIncrement()));
+					b.setIdCollegioPluri(rs.getInt(i.getAndIncrement()));
+					b.setDescCollegioPluri(rs.getString(i.getAndIncrement()));
+					b.setIdCircoscrizione(rs.getInt(i.getAndIncrement()));
+					b.setDescCircoscrizione(rs.getString(i.getAndIncrement()));
+					b.setNumSeggi(rs.getInt(i.getAndIncrement()));
+					b.setVotiTotCand(rs.getInt(i.getAndIncrement()));
+					b.setVotiSoloCand(rs.getInt(i.getAndIncrement()));
+					b.setVotiLista(rs.getInt(i.getAndIncrement()));
+					b.setDescLista(rs.getString(i.getAndIncrement()));
+					b.setIdLista(rs.getInt(i.getAndIncrement()));
+					b.setDescContrassegno(rs.getString(i.getAndIncrement()));
+					b.setDescPartito(rs.getString(i.getAndIncrement()));
+					b.setIdAggregatoRiparto(rs.getInt(i.getAndIncrement()));
+					b.setCoteTerpa(rs.getInt(i.getAndIncrement()));
+					b.setCoterAcqte(rs.getInt(i.getAndIncrement()));
+					b.setCoterContr(rs.getInt(i.getAndIncrement()));
+					b.setCoterPrgContr(rs.getInt(i.getAndIncrement()));
+					b.setCoterCoali(rs.getInt(i.getAndIncrement()));
+					b.setCoterRicus(rs.getInt(i.getAndIncrement()));
+					b.setFlagMinoranza(rs.getString(i.getAndIncrement()));
+					b.setCcp(rs.getInt(i.getAndIncrement()));
+					
+					baseList.add(b);
+					
+				}
+				return null;
+			}
+		});
+		
+		return baseList;
+		
 	}
 }

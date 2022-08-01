@@ -4,7 +4,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,7 +31,6 @@ import com.itextpdf.text.Phrase;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
-import com.lowagie.text.pdf.PdfCell;
 
 public class RipartoCamera extends AppoggioStampa{
 
@@ -50,7 +48,8 @@ public class RipartoCamera extends AppoggioStampa{
 	public void eseguiRiparto() throws FileNotFoundException, DocumentException {
 
 
-		PdfWriter.getInstance(document, new FileOutputStream("H:\\riparto.pdf"));
+		String path = "C:\\workspace\\riparto.pdf";//"H:\\riparto.pdf"
+		PdfWriter.getInstance(document, new FileOutputStream(path));
 
 		document.open();
 
@@ -213,41 +212,44 @@ public class RipartoCamera extends AppoggioStampa{
 		IntStream idCoali = nazionali.stream().mapToInt(Base::getCoterCoali).distinct();
 		
 		idCoali.forEach(el -> {
+			PdfPCell cell = new PdfPCell();
+			PdfPCell cell2 = new PdfPCell();
+			PdfPCell cell3 = new PdfPCell();
+			PdfPCell cell4 = new PdfPCell();
+			PdfPCell cell5 = new PdfPCell();
+			PdfPCell cell6 = new PdfPCell();
+			PdfPCell cell7 = new PdfPCell();
+			PdfPCell cell8 = new PdfPCell();
 			
-			nazionali.stream().filter(x->x.getCoterCoali().compareTo(el) == 0).forEach(e->{
-				PdfPCell cell = new PdfPCell();				
+			List<Base> list = nazionali.stream().filter(x->x.getCoterCoali().compareTo(el) == 0).collect(Collectors.toList()); 
+
+			for (Base e : list) {
+				
 				cell.addElement(addParagraph(e.getDescLista()));
-				table.addCell(cell);
 				
-				PdfPCell cell2 = new PdfPCell();	
 				cell2.addElement(addParagraph(String.valueOf(e.getVotiLista())));
-				table.addCell(cell2);
 				
-				PdfPCell cell3 = new PdfPCell();	
 				cell3.addElement(addParagraph(String.valueOf(e.getPercentualeLista())));
-				table.addCell(cell3);
 				
-				PdfPCell cell4 = new PdfPCell();	
 				cell4.addElement(addParagraph(e.getPartecipaRipartoLista()));
-				table.addCell(cell4);
 				
-				PdfPCell cell5 = new PdfPCell();	
 				cell5.addElement(addParagraph(String.valueOf(e.getCifraCoalizione())));
-				table.addCell(cell5);
 				
-				PdfPCell cell6 = new PdfPCell();	
 				cell6.addElement(addParagraph(String.valueOf(e.getPercentualeCoalizione())));
-				table.addCell(cell6);
 				
-				PdfPCell cell7 = new PdfPCell();	
 				cell7.addElement(addParagraph(e.getPartecipaRipartoCoalizione()));
-				table.addCell(cell7);
 				
-				PdfPCell cell8 = new PdfPCell();	
 				cell8.addElement(addParagraph(String.valueOf(e.getCoterCoali())));
-				table.addCell(cell8);
-			});
+			}
 		
+			table.addCell(cell);
+			table.addCell(cell2);
+			table.addCell(cell3);
+			table.addCell(cell4);
+			table.addCell(cell5);
+			table.addCell(cell6);
+			table.addCell(cell7);
+			table.addCell(cell8);
 			
 		});
 //		nazionali.forEach(e-> {
