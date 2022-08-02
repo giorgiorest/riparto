@@ -2,7 +2,9 @@ package com.elettorale.riparto.calcolo;
 
 import java.math.BigDecimal;
 
-public class AppoggioStampa {
+import com.elettorale.riparto.utils.RipartoUtils;
+
+public class AppoggioStampa extends RipartoUtils {
 
 	private Integer totaleVotiValidi;
 	private BigDecimal votiValidi1;

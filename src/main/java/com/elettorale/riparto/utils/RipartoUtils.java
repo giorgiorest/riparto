@@ -12,21 +12,24 @@ public class RipartoUtils {
 	/**
 	 * Superclasse da estendere per avere una gestione centralizzata
 	 */
-	class Elemento{
+	public class Elemento{
 		private Integer id;
 		private String descrizione;
 		private Integer cifra;
 		private Integer resto;
 		private Boolean sorteggio = Boolean.FALSE;
+		private Integer seggiQI = 0;
 		private Integer seggiResti = 0;
 		private BigDecimal decimale;
+		private List<String> descrizioni;
 		
-		public Elemento(Integer id, String descrizione, Integer cifra, Integer resto) {
+		public Elemento(Integer id, String descrizione, Integer cifra, Integer resto, List<String> descrizioni) {
 			super();
 			this.id = id;
 			this.descrizione = descrizione;
 			this.cifra = cifra;
 			this.resto = resto;
+			this.descrizioni = descrizioni;
 		}
 		public String getDescrizione() {
 			return descrizione;
@@ -72,9 +75,21 @@ public class RipartoUtils {
 			return "ID: " + this.id + ", DESCRIZIONE: " + this.descrizione + ", RESTO: " + this.resto + ", CIFRA: "
 					+ this.cifra + ", SORT: " + this.sorteggio + ", SEGGI RESTI: " + this.seggiResti;
 		}
+		public List<String> getDescrizioni() {
+			return descrizioni;
+		}
+		public void setDescrizioni(List<String> descrizioni) {
+			this.descrizioni = descrizioni;
+		}
+		public Integer getSeggiQI() {
+			return seggiQI;
+		}
+		public void setSeggiQI(Integer seggiQI) {
+			this.seggiQI = seggiQI;
+		}
 	}
 	
-	class Quoziente{
+	protected class Quoziente{
 		//numero di seggi interi
 		private Integer quoziente;
 		//resto del quoziente
@@ -115,7 +130,7 @@ public class RipartoUtils {
 		}
 		
 	}
-	enum TipoOrdinamento{
+	protected enum TipoOrdinamento{
 		RESTI,
 		CIFRA,
 		DECIMALI
@@ -160,14 +175,14 @@ public class RipartoUtils {
 		return lista;
 	}
 
-	private List<Elemento> sortCustom(List<Elemento> lista, TipoOrdinamento tipoOrdinamento) {
+	public List<Elemento> sortCustom(List<Elemento> lista, TipoOrdinamento tipoOrdinamento) {
 
 		AtomicBoolean parita = new AtomicBoolean();
 		
 		switch (tipoOrdinamento) {
 		case RESTI:
 			lista.sort((e1, e2) -> {
-				if(e1.getResto().equals(e2.getResto())) {
+				if(e1.getResto() == (e2.getResto())) {
 					parita.set(true);
 				}
 				return e2.getResto().compareTo(e1.getResto());
@@ -179,7 +194,7 @@ public class RipartoUtils {
 			break;
 		case DECIMALI:
 			lista.sort((e1, e2) -> {
-				if(e1.getDecimale().equals(e2.getDecimale())) {
+				if(e1.getDecimale() == (e2.getDecimale())) {
 					parita.set(true);
 				}
 				return e2.getResto().compareTo(e1.getResto());
@@ -191,7 +206,7 @@ public class RipartoUtils {
 			break;
 		case CIFRA:
 			lista.sort((e1, e2) -> {
-				if(e1.getCifra().equals(e2.getCifra())) {
+				if(e1.getCifra() == (e2.getCifra())) {
 					e1.setSorteggio(Boolean.TRUE);
 					e2.setSorteggio(Boolean.TRUE);
 				}
@@ -238,5 +253,44 @@ public class RipartoUtils {
 		}
 		
 		return quoziente;
+	}
+	
+	public List<Elemento> assegnaSeggi(List<Elemento> elements, TipoOrdinamento tipoOrdinamento, Integer numSeggi){
+		
+		sortCustom(elements, tipoOrdinamento);
+		boolean fineGiro = false;
+		
+		while(numSeggi > 0 && !fineGiro) {
+			for(Elemento e : elements)
+				if(!e.sorteggio && numSeggi > 0) {
+					e.setSeggiResti(e.getSeggiResti() + 1);
+					numSeggi--;
+			}
+			fineGiro = true;
+		}
+		
+		return elements;
+	}
+	
+	public Quoziente assegnaseggiQIMassimiResti(List<Elemento> elements,
+			Integer numSeggiDaAssegnare, Integer totVoti) {
+		Quoziente q = getQuozienteResto(totVoti, numSeggiDaAssegnare, null);
+		
+		sortCustom(elements, TipoOrdinamento.CIFRA);
+		
+		if(elements.size() == 1) {
+			elements.stream().findFirst().get().setSeggiQI(numSeggiDaAssegnare);
+		}else {
+			elements.forEach(e->{
+				Quoziente quoziente = getQuozienteResto(e.getCifra(), q.getQuoziente(), null);
+				
+				e.setSeggiQI(quoziente.getQuoziente());
+				e.setResto(quoziente.getResto());
+			});
+		}
+		
+		assegnaSeggi(elements, TipoOrdinamento.RESTI, numSeggiDaAssegnare-elements.stream().mapToInt(Elemento::getSeggiQI).sum());
+		
+		return q;
 	}
 }
