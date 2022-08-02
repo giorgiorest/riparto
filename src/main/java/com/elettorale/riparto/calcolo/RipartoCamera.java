@@ -16,8 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elettorale.riparto.constants.Header;
-import com.elettorale.riparto.controller.Controller;
 import com.elettorale.riparto.dto.Base;
+import com.elettorale.riparto.dto.Coalizione;
 import com.elettorale.riparto.utils.RipartoUtils;
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Chunk;
@@ -34,7 +34,7 @@ import com.itextpdf.text.pdf.PdfWriter;
 
 public class RipartoCamera extends AppoggioStampa{
 
-	Logger log = LoggerFactory.getLogger(Controller.class);
+	Logger log = LoggerFactory.getLogger(RipartoCamera.class);
 	
 	private Document document = new Document(PageSize.A4.rotate());
 	private List<Base> list;
@@ -45,22 +45,34 @@ public class RipartoCamera extends AppoggioStampa{
 		this.list = list;
 	}
 
-	public void eseguiRiparto() throws FileNotFoundException, DocumentException {
+	public void eseguiRiparto(boolean isLocal) throws FileNotFoundException, DocumentException {
 
 
-		String path = "C:\\workspace\\riparto.pdf";//"H:\\riparto.pdf"
+		String path;
+		if(isLocal) {
+			path = "C:\\workspace\\riparto.pdf";
+		}else {
+			path = "\\\\nas-files-srv2\\Condivisioni\\acc_inm\\testRipartoExcel\\ripartonew\\riparto.pdf";
+		}
 		PdfWriter.getInstance(document, new FileOutputStream(path));
 
 		document.open();
 
-		calcolaCifraNazionale();
+		List<Base> nazionali = calcolaCifraNazionale();
+		
+		ripartoCoalizioniListeNazionali(nazionali);
 		
 		document.close();
 		
 		log.info("GENERAZIONE DOCUMENTO RIPARTO");
 	}
 
-	public void calcolaCifraNazionale() throws DocumentException {
+	private void ripartoCoalizioniListeNazionali(List<Base> nazionali) {
+		
+//		Integer votiCoalizioniListeAmmesse = nazionali.str
+	}
+
+	public List<Base> calcolaCifraNazionale() throws DocumentException {
 		log.info("ESTRAGGO LISTE NAZIONALI E SOMMO VOTI");
 
 		List<Base> nazionali = new ArrayList<>();
@@ -100,22 +112,28 @@ public class RipartoCamera extends AppoggioStampa{
 		});
 		
 		//Set Cifra Coalizioni 
+		List<Base> nazionaliCoaliListe = new ArrayList<>();
+		
 		Map<Integer, List<Base>> mapCoali = nazionali.stream()
-				.filter(l -> l.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString()))
 				.collect(Collectors.groupingBy(Base::getCoterCoali));
 		
 		mapCoali.forEach((k,v)->{
 			
 			if(v.size() > 1) {
+				Coalizione coali = new Coalizione(v.stream().map(e -> new Base(e)).collect(Collectors.toList()));
 				//sono in una coalizione e calcolo totale voti coali solo delle liste ammesse al riparto
 				Integer votiCoali = v.stream().filter(l->l.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString())).mapToInt(Base::getVotiLista).sum();
-				v.forEach(el -> el.setCifraCoalizione(votiCoali));
+				coali.setNumVotiCoalizione(votiCoali);
+				coali.setDescCoalizione(v.stream().map(Base::getDescLista).collect(Collectors.joining("-")));
+				coali.setCoterCoali(k);
+				nazionaliCoaliListe.add(coali);
 			}else {
 				//negli altri casi la cifra coali è quella della lista solo se la lista partecipa al riparto
 				v.forEach(el -> {
 					if(el.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString())) {
 						el.setCifraCoalizione(el.getVotiLista());
 					}
+					nazionaliCoaliListe.add(el);
 				});
 			}
 			
@@ -126,42 +144,32 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		this.setVotiValidi3(soglia3);
 		
-		mapCoali.forEach((k,v)->{
-			
-			if(v.size() > 1) {
-				v.forEach(el -> {
-					//calcolo partecipa riparto coalizione solo per liste in coalizione che partecipano al riparto
-					if(BigDecimal.valueOf(el.getCifraCoalizione()).compareTo(soglia3) >= 0 && el.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString())) {
-						el.setPartecipaRipartoCoalizione(PartecipaRiparto.SI.toString());
-					}else {
-						el.setPartecipaRipartoCoalizione(PartecipaRiparto.NO.toString());
-					}
-				});
+		nazionaliCoaliListe.forEach(el->{
+			//calcolo partecipa riparto coalizione solo per liste in coalizione che partecipano al riparto
+			if(el instanceof Coalizione) {
+				if(BigDecimal.valueOf(((Coalizione)el).getNumVotiCoalizione()).compareTo(soglia3) >= 0) {
+					el.setPartecipaRipartoCoalizione(PartecipaRiparto.SI.toString());
+					//Calcolo % Coalizione
+					el.setPercentualeCoalizione(ripartoUtils.truncateDecimal(new BigDecimal(((double)((Coalizione)el).getNumVotiCoalizione()/sommaVoti)*100), 3));
+				}else {
+					el.setPartecipaRipartoCoalizione(PartecipaRiparto.NO.toString());
+				}
+				
 			}else {
 				//negli altri casi la cifra coali è quella della lista solo se la lista partecipa al riparto
-				v.forEach(el -> {
-					if(el.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString())) {
-						el.setPartecipaRipartoCoalizione(PartecipaRiparto.SI.toString());
-					}else {
-						el.setPartecipaRipartoCoalizione(PartecipaRiparto.NO.toString());
-					}
-				});
-			}
-			
-		});
-		
-		//Calcolo % Coalizione
-		mapCoali.forEach((k,v)->{
-			v.forEach(el -> {
-				if(el.getPartecipaRipartoCoalizione().equals(PartecipaRiparto.SI.toString())) {
-					el.setPercentualeCoalizione(ripartoUtils.truncateDecimal(new BigDecimal(((double)el.getCifraCoalizione()/sommaVoti)*100), 3));
+				if(el.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString())) {
+					el.setPartecipaRipartoCoalizione(PartecipaRiparto.SI.toString());
+				}else {
+					el.setPartecipaRipartoCoalizione(PartecipaRiparto.NO.toString());
 				}
-			});
+			}
 		});
 		
 		log.info("GENERAZIONE PROSPETTO 1");
-		generaProspetto1(nazionali);
+		generaProspetto1(nazionaliCoaliListe);
 		log.info("FINE GENERAZIONE PROSPETTO 1");
+		
+		return nazionali;
 	}
 
 	enum PartecipaRiparto{
@@ -187,8 +195,6 @@ public class RipartoCamera extends AppoggioStampa{
 	
 	private void generaProspetto1(List<Base> nazionali) throws DocumentException {
 
-		nazionali.sort((e1,e2) -> e1.getCoterCoali().compareTo(e2.getCoterCoali()));
-		
 		document.newPage();
 
 		document.setPageCount(pageCount.getAndIncrement());
@@ -224,22 +230,41 @@ public class RipartoCamera extends AppoggioStampa{
 			List<Base> list = nazionali.stream().filter(x->x.getCoterCoali().compareTo(el) == 0).collect(Collectors.toList()); 
 
 			for (Base e : list) {
-				
-				cell.addElement(addParagraph(e.getDescLista()));
-				
-				cell2.addElement(addParagraph(String.valueOf(e.getVotiLista())));
-				
-				cell3.addElement(addParagraph(String.valueOf(e.getPercentualeLista())));
-				
-				cell4.addElement(addParagraph(e.getPartecipaRipartoLista()));
-				
-				cell5.addElement(addParagraph(String.valueOf(e.getCifraCoalizione())));
-				
-				cell6.addElement(addParagraph(String.valueOf(e.getPercentualeCoalizione())));
-				
-				cell7.addElement(addParagraph(e.getPartecipaRipartoCoalizione()));
-				
-				cell8.addElement(addParagraph(String.valueOf(e.getCoterCoali())));
+				if(e instanceof Coalizione) {
+					Coalizione c = (Coalizione)e;
+					c.getListe().forEach(m->{
+						cell.addElement(addParagraph(m.getDescLista()));
+						
+						cell2.addElement(addParagraph(String.valueOf(m.getVotiLista())));
+						
+						cell3.addElement(addParagraph(String.valueOf(m.getPercentualeLista())));
+						
+						cell4.addElement(addParagraph(m.getPartecipaRipartoLista()));
+						
+					});
+					cell5.addElement(addParagraph(String.valueOf(c.getNumVotiCoalizione())));
+					cell6.addElement(addParagraph(String.valueOf(c.getPercentualeCoalizione())));
+					
+					cell7.addElement(addParagraph(e.getPartecipaRipartoCoalizione()));
+					
+					cell8.addElement(addParagraph(String.valueOf(e.getCoterCoali())));
+				}else {
+					
+					cell.addElement(addParagraph(e.getDescLista()));
+					
+					cell2.addElement(addParagraph(String.valueOf(e.getVotiLista())));
+					
+					cell3.addElement(addParagraph(String.valueOf(e.getPercentualeLista())));
+					
+					cell4.addElement(addParagraph(e.getPartecipaRipartoLista()));
+					
+					cell5.addElement(addParagraph(String.valueOf(e.getVotiLista())));
+					cell6.addElement(addParagraph(String.valueOf(e.getPercentualeLista())));
+					
+					cell7.addElement(addParagraph(e.getPartecipaRipartoCoalizione()));
+					
+					cell8.addElement(addParagraph(String.valueOf(e.getCoterCoali())));
+				}
 			}
 		
 			table.addCell(cell);

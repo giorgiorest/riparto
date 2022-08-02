@@ -2,7 +2,9 @@ package com.elettorale.riparto.dto;
 
 import java.math.BigDecimal;
 
-public class General {
+import com.elettorale.riparto.utils.RipartoUtils;
+
+public class General extends RipartoUtils{
 
 	private BigDecimal percentualeLista;
 	private BigDecimal percentualeCoalizione;
@@ -11,6 +13,18 @@ public class General {
 	private String partecipaRipartoCoalizione;
 	private Boolean isCoalizione;
 	
+	public General() {
+		// TODO Auto-generated constructor stub
+	}
+	public General(Base b) {
+		super();
+		this.percentualeLista = b.getPercentualeLista();
+		this.percentualeCoalizione = b.getPercentualeCoalizione();
+		this.cifraCoalizione = b.getCifraCoalizione();
+		this.partecipaRipartoLista = b.getPartecipaRipartoLista();
+		this.partecipaRipartoCoalizione = b.getPartecipaRipartoCoalizione();
+		this.isCoalizione = b.getIsCoalizione();
+	}
 	public BigDecimal getPercentualeLista() {
 		return percentualeLista;
 	}

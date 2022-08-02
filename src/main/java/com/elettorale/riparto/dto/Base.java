@@ -33,10 +33,79 @@ public class Base extends General{
 	private Integer ccp;
 	
 	public Base() {
-		// TODO Auto-generated constructor stub
+		super();
+	}
+	
+	public Base(Base b) {
+
+		super(b);
+		this.ccp = b.getCcp();
+		this.cognome = b.getCognome();
+		this.coterAcqte = b.getCoterAcqte();
+		this.coterCoali = b.getCoterCoali();
+		this.coterContr = b.getCoterContr();
+		this.coterPrgContr = b.getCoterPrgContr();
+		this.coterRicus = b.getCoterRicus();
+		this.coteTerpa = b.getCoteTerpa();
+		this.dataNascita = b.getDataNascita();
+		this.descCircoscrizione = b.getDescCircoscrizione();
+		this.descCollegioPluri = b.getDescCollegioPluri();
+		this.descContrassegno = b.getDescContrassegno();
+		this.descLista = b.getDescLista();
+		this.descPartito = b.getDescPartito();
+		this.descTerpaCandidato = b.getDescTerpaCandidato();
+		this.flagMinoranza = b.getFlagMinoranza();
+		this.idAggregatoRiparto = b.getIdAggregatoRiparto();
+		this.idCandidato = b.getIdCandidato();
+		this.idCircoscrizione = b.getIdCircoscrizione();
+		this.idCollegioPluri = b.getIdCollegioPluri();
+		this.idLista = b.getIdLista();
+		this.idTerpaCandidato = b.getIdTerpaCandidato();
+		this.nome = b.getNome();
+		this.numSeggi = b.getNumSeggi();
+		this.votiLista = b.getVotiLista();
+		this.votiSoloCand = b.getVotiSoloCand();
+		this.votiTotCand = b.getVotiTotCand();
+		
+//		Base base = new Base();
+//		base.setCcp(b.getCcp());
+//		base.setCifraCoalizione(b.getCifraCoalizione());
+//		base.setCognome(b.getCognome());
+//		base.setCoterAcqte(b.getCoterAcqte());
+//		base.setCoterCoali(b.getCoterCoali());
+//		base.setCoterContr(b.getCoterContr());
+//		base.setCoterPrgContr(b.getCoterPrgContr());
+//		base.setCoterRicus(b.getCoterRicus());
+//		base.setCoteTerpa(b.getCoteTerpa());
+//		base.setDataNascita(b.getDataNascita());
+//		base.setDescCircoscrizione(b.getDescCircoscrizione());
+//		base.setDescCollegioPluri(b.getDescCollegioPluri());
+//		base.setDescContrassegno(b.getDescContrassegno());
+//		base.setDescLista(b.getDescLista());
+//		base.setDescPartito(b.getDescPartito());
+//		base.setDescTerpaCandidato(b.getDescTerpaCandidato());
+//		base.setFlagMinoranza(b.getFlagMinoranza());
+//		base.setIdAggregatoRiparto(b.getIdAggregatoRiparto());
+//		base.setIdCandidato(b.getIdCandidato());
+//		base.setIdCircoscrizione(b.getIdCircoscrizione());
+//		base.setIdCollegioPluri(b.getIdCollegioPluri());
+//		base.setIdLista(b.getIdLista());
+//		base.setIdTerpaCandidato(b.getIdTerpaCandidato());
+//		base.setIsCoalizione(b.getIsCoalizione());
+//		base.setNome(b.getNome());
+//		base.setNumSeggi(b.getNumSeggi());
+//		base.setPartecipaRipartoCoalizione(b.getPartecipaRipartoCoalizione());
+//		base.setPartecipaRipartoLista(b.getPartecipaRipartoLista());
+//		base.setPercentualeCoalizione(b.getPercentualeCoalizione());
+//		base.setPercentualeLista(b.getPercentualeLista());
+//		base.setVotiLista(b.getVotiLista());
+//		base.setVotiSoloCand(b.getVotiSoloCand());
+//		base.setVotiTotCand(b.getVotiTotCand());
+		
 	}
 	
 	public Base(String descLista, Integer coterCoali) {
+		super();
 		this.descLista = descLista;
 		this.coterCoali = coterCoali;
 	}
