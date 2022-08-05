@@ -10,13 +10,15 @@ public class Base extends General{
 	private Date dataNascita;
 	private Integer idTerpaCandidato;
 	private String descTerpaCandidato;
+	private Integer votiTotCand;
+	private Integer votiSoloCand;
+	
+	//
 	private Integer idCollegioPluri;
 	private String descCollegioPluri;
 	private Integer idCircoscrizione;
 	private String descCircoscrizione;
 	private Integer numSeggi;
-	private Integer votiTotCand;
-	private Integer votiSoloCand;
 	private Integer votiLista;
 	private String descLista;
 	private Integer idLista;
@@ -104,10 +106,11 @@ public class Base extends General{
 		
 	}
 	
-	public Base(String descLista, Integer coterCoali) {
+	public Base(String descLista, Integer coterCoali, Integer aggRiparto) {
 		super();
 		this.descLista = descLista;
 		this.coterCoali = coterCoali;
+		this.idAggregatoRiparto = aggRiparto;
 	}
 	public Integer getIdCandidato() {
 		return idCandidato;

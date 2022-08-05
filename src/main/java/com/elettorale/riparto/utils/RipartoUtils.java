@@ -20,16 +20,20 @@ public class RipartoUtils {
 		private Boolean sorteggio = Boolean.FALSE;
 		private Integer seggiQI = 0;
 		private Integer seggiResti = 0;
-		private BigDecimal decimale;
+		private Integer seggiDecimali = 0;
 		private List<String> descrizioni;
+		private Territorio territorio;
+		private Quoziente quoziente;
+		private Integer idCoalizione;
 		
-		public Elemento(Integer id, String descrizione, Integer cifra, Integer resto, List<String> descrizioni) {
+		public Elemento(Integer id, String descrizione, Integer cifra, Integer resto, List<String> descrizioni, Integer idCoalizione) {
 			super();
 			this.id = id;
 			this.descrizione = descrizione;
 			this.cifra = cifra;
 			this.resto = resto;
 			this.descrizioni = descrizioni;
+			this.idCoalizione = idCoalizione;
 		}
 		public String getDescrizione() {
 			return descrizione;
@@ -64,17 +68,6 @@ public class RipartoUtils {
 		public void setSeggiResti(Integer seggiResti) {
 			this.seggiResti = seggiResti;
 		}
-		public BigDecimal getDecimale() {
-			return decimale;
-		}
-		public void setDecimale(BigDecimal decimale) {
-			this.decimale = decimale;
-		}
-		@Override
-		public String toString() {
-			return "ID: " + this.id + ", DESCRIZIONE: " + this.descrizione + ", RESTO: " + this.resto + ", CIFRA: "
-					+ this.cifra + ", SORT: " + this.sorteggio + ", SEGGI RESTI: " + this.seggiResti;
-		}
 		public List<String> getDescrizioni() {
 			return descrizioni;
 		}
@@ -86,6 +79,76 @@ public class RipartoUtils {
 		}
 		public void setSeggiQI(Integer seggiQI) {
 			this.seggiQI = seggiQI;
+		}
+		
+		public Territorio getTerritorio() {
+			return territorio;
+		}
+		public void setTerritorio(Territorio territorio) {
+			this.territorio = territorio;
+		}
+		public Integer getSeggiDecimali() {
+			return seggiDecimali;
+		}
+		public void setSeggiDecimali(Integer seggiDecimali) {
+			this.seggiDecimali = seggiDecimali;
+		}
+		public Quoziente getQuoziente() {
+			return quoziente;
+		}
+		public void setQuoziente(Quoziente quoziente) {
+			this.quoziente = quoziente;
+		}
+		public Integer getIdCoalizione() {
+			return idCoalizione;
+		}
+		public void setIdCoalizione(Integer idCoalizione) {
+			this.idCoalizione = idCoalizione;
+		}
+
+	}
+
+	public class Territorio{
+		private Integer id;
+		private String descrizione;
+		private TipoTerritorio tipoTerritorio;
+		private Integer numSeggi;
+		
+		public Territorio(Integer id, TipoTerritorio tipoTerritorio, String descrizione, Integer numSeggi) {
+			super();
+			this.id = id;
+			this.tipoTerritorio = tipoTerritorio;
+			this.descrizione = descrizione;
+			this.setNumSeggi(numSeggi);
+		}
+		public Integer getId() {
+			return id;
+		}
+		public void setId(Integer id) {
+			this.id = id;
+		}
+		public TipoTerritorio getTipoTerritorio() {
+			return tipoTerritorio;
+		}
+		public void setTipoTerritorio(TipoTerritorio tipoTerritorio) {
+			this.tipoTerritorio = tipoTerritorio;
+		}
+		public String getDescrizione() {
+			return descrizione;
+		}
+		public void setDescrizione(String descrizione) {
+			this.descrizione = descrizione;
+		}
+		public Integer getNumSeggi() {
+			return numSeggi;
+		}
+		public void setNumSeggi(Integer numSeggi) {
+			this.numSeggi = numSeggi;
+		}
+		@Override
+		public String toString() {
+			// TODO Auto-generated method stub
+			return this.descrizione;
 		}
 	}
 	
@@ -130,16 +193,6 @@ public class RipartoUtils {
 		}
 		
 	}
-	protected enum TipoOrdinamento{
-		RESTI,
-		CIFRA,
-		DECIMALI
-	}
-
-	enum Ordinamento{
-		ASC,
-		DESC
-	}
 	
 	public List<Elemento> sort(List<Elemento> lista, TipoOrdinamento tipoOrdinamento, Ordinamento ordinamento) {
 		
@@ -154,7 +207,7 @@ public class RipartoUtils {
 			break;
 		case DECIMALI:
 			if(ordinamento.equals(Ordinamento.ASC)) {
-				lista.sort((e1, e2) -> e1.getDecimale().compareTo(e2.getDecimale()));
+				lista.sort((e1, e2) -> e1.getQuoziente().getDecimale().compareTo(e2.getQuoziente().getDecimale()));
 			}else {
 				sortCustom(lista, tipoOrdinamento);
 			}
@@ -194,7 +247,7 @@ public class RipartoUtils {
 			break;
 		case DECIMALI:
 			lista.sort((e1, e2) -> {
-				if(e1.getDecimale() == (e2.getDecimale())) {
+				if(e1.getQuoziente().getDecimale() == (e2.getQuoziente().getDecimale())) {
 					parita.set(true);
 				}
 				return e2.getResto().compareTo(e1.getResto());
@@ -263,7 +316,16 @@ public class RipartoUtils {
 		while(numSeggi > 0 && !fineGiro) {
 			for(Elemento e : elements)
 				if(!e.sorteggio && numSeggi > 0) {
-					e.setSeggiResti(e.getSeggiResti() + 1);
+					switch (tipoOrdinamento) {
+					case RESTI:
+						e.setSeggiResti(e.getSeggiResti() + 1);
+						break;
+					case DECIMALI:
+						e.setSeggiDecimali(e.getSeggiDecimali() + 1);
+						break;
+					default:
+						break;
+					}
 					numSeggi--;
 			}
 			fineGiro = true;
@@ -273,7 +335,7 @@ public class RipartoUtils {
 	}
 	
 	public Quoziente assegnaseggiQIMassimiResti(List<Elemento> elements,
-			Integer numSeggiDaAssegnare, Integer totVoti) {
+			Integer numSeggiDaAssegnare, Integer totVoti, TipoOrdinamento tipoAssegnazione) {
 		Quoziente q = getQuozienteResto(totVoti, numSeggiDaAssegnare, null);
 		
 		sortCustom(elements, TipoOrdinamento.CIFRA);
@@ -289,8 +351,97 @@ public class RipartoUtils {
 			});
 		}
 		
-		assegnaSeggi(elements, TipoOrdinamento.RESTI, numSeggiDaAssegnare-elements.stream().mapToInt(Elemento::getSeggiQI).sum());
+		assegnaSeggi(elements, tipoAssegnazione, numSeggiDaAssegnare-elements.stream().mapToInt(Elemento::getSeggiQI).sum());
 		
 		return q;
+	}
+	
+	protected enum TipoOrdinamento{
+		RESTI,
+		CIFRA,
+		DECIMALI
+	}
+
+	enum Ordinamento{
+		ASC,
+		DESC
+	}
+	
+	protected enum TipoTerritorio{
+		NAZIONALE,
+		CIRCOSCRIZIONE,
+		COLLEGIO_PLURI,
+		COLLEGIO_UNI;
+	}
+	
+	public class Prospetto6{
+		private Integer idAggregato;
+		private String descLista;
+		private Integer seggiQICirc;
+		private Integer seggiTotCirc;
+		private Integer seggiNazionali;
+		private Integer diff;
+		
+		private Integer cifraNazionale;
+		
+		public Integer getIdAggregato() {
+			return idAggregato;
+		}
+		public void setIdAggregato(Integer idAggregato) {
+			this.idAggregato = idAggregato;
+		}
+		public String getDescLista() {
+			return descLista;
+		}
+		public void setDescLista(String descLista) {
+			this.descLista = descLista;
+		}
+		public Integer getSeggiQICirc() {
+			return seggiQICirc;
+		}
+		public void setSeggiQICirc(Integer seggiQICirc) {
+			this.seggiQICirc = seggiQICirc;
+		}
+		public Integer getSeggiTotCirc() {
+			return seggiTotCirc;
+		}
+		public void setSeggiTotCirc(Integer seggiTotCirc) {
+			this.seggiTotCirc = seggiTotCirc;
+		}
+		public Integer getSeggiNazionali() {
+			return seggiNazionali;
+		}
+		public void setSeggiNazionali(Integer seggiNazionali) {
+			this.seggiNazionali = seggiNazionali;
+		}
+		public Integer getDiff() {
+			return diff;
+		}
+		public void setDiff(Integer diff) {
+			this.diff = diff;
+		}
+		public Integer getCifraNazionale() {
+			return cifraNazionale;
+		}
+		public void setCifraNazionale(Integer cifraNazionale) {
+			this.cifraNazionale = cifraNazionale;
+		}
+	}
+	
+	public List<Prospetto6> sortByDiffCifra(List<Prospetto6> lista){
+		
+		lista.sort((e1,e2) -> {
+			//se seggi eccedntari uguali, ordino per maggior cifra
+			if(e1.getDiff().compareTo(e2.getDiff()) == 0) {
+				//Ordino per cifra maggiore
+				return e1.getCifraNazionale().compareTo(e2.getCifraNazionale());
+			}else {
+				//ordino per maggior seggi eccedentari
+				return e1.getDiff().compareTo(e2.getDiff());
+			}
+			
+		});
+		return lista;
+		
 	}
 }

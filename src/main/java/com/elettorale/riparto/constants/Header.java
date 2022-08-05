@@ -3,12 +3,12 @@ package com.elettorale.riparto.constants;
 public enum Header {
 	
 	DESC_LISTA("Descrizione lista"),
-	CIFRA("Cifra elettorale lista"),
+	CIFRA("Cifra lista"),
 	PERC_CIFRA("% Lista"),
-	PART_RIPARTO_LISTA("Partecipa al riparto"),
-	CIFRA_COALI("Cifra elettorale coalizione"),
+	PART_RIPARTO_LISTA("Partecipa"),
+	CIFRA_COALI("Cifra coalizione"),
 	PERC_COALI("% Coalizione"),
-	PART_RIPARTO_COALI("Partecipa al riparto"),
+	PART_RIPARTO_COALI("Partecipa"),
 	ID_COALI("id coalizione");
 
 	private String value;
