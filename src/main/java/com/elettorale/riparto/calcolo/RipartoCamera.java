@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import com.elettorale.riparto.constants.Header;
 import com.elettorale.riparto.constants.Prospetto2;
 import com.elettorale.riparto.constants.Prospetto5;
 import com.elettorale.riparto.constants.Prospetto7;
+import com.elettorale.riparto.constants.Prospetto8;
 import com.elettorale.riparto.dto.Base;
 import com.elettorale.riparto.dto.Coalizione;
 import com.elettorale.riparto.utils.RipartoUtils;
@@ -665,13 +667,6 @@ public class RipartoCamera extends AppoggioStampa{
 		generaProspetto6(listProspetto6);
 		log.info("FINE GENERAZIONE PROSPETTO 6");
 		
-		mapEccedentarie.entrySet().forEach(e->{
-			try {
-				generaProspetto7(e.getValue());
-			} catch (DocumentException e1) {
-				e1.printStackTrace();
-			}
-		});
 		return listProspetto6;
 	}
 	
@@ -725,7 +720,7 @@ public class RipartoCamera extends AppoggioStampa{
 		
 	}
 
-	private void compensazioneCircoscrizionale(List<Prospetto6> listProspetto6) {
+	private void compensazioneCircoscrizionale(List<Prospetto6> listProspetto6) throws DocumentException {
 
 		RipartoUtils utils = new RipartoUtils();
 		
@@ -733,29 +728,53 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		eccedntarie = utils.sortByDiffCifra(eccedntarie);
 		
+		eccedntarie.forEach(e->{
+			List<Elemento> elements = mapEccedentarie.get(e.getIdAggregato());
+			
+			elements.sort(compareByDecimale());
+		});
+		
+		mapEccedentarie.entrySet().forEach(e->{
+			try {
+				log.info("GENERAZIONE PROSPETTO 7");
+				generaProspetto7(e.getValue());
+				log.info("FINE GENERAZIONE PROSPETTO 7");
+			} catch (DocumentException e1) {
+				log.error("ERROR GENERAZIONE PROSPETTO 7:{}", e1.getMessage());			
+				}
+		});
+		
+		mapDeficitarie.entrySet().forEach(d->{
+			log.info("GENERAZIONE PROSPETTO 8");
+			try {
+				generaProspetto8(d.getValue());
+			} catch (DocumentException e1) {
+				log.error("ERROR GENERAZIONE PROSPETTO 8:{}", e1.getMessage());	
+			}
+			log.info("FINE GENERAZIONE PROSPETTO 8");
+		});
 		
 	}
-	
-	private void generaProspetto7(List<Elemento> lista) throws DocumentException {
-		
+
+	private void generaProspetto8(List<Elemento> lista) throws DocumentException {
 		document.newPage();
 
 		document.setPageCount(pageCount.getAndIncrement());
 		
 		String descLista = lista.stream().map(Elemento::getDescrizione).distinct().findFirst().orElseThrow();
-		document.add(addParagraph("PROSPETTO 7", 15));
+		document.add(addParagraph("PROSPETTO 8", 15));
 		document.add(addParagraph(descLista, 13));
 		
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 15));
 		
-		float[] width = {10,30,20,20,10,10};
+		float[] width = {10,30,20,20,10,10,10};
 
 		PdfPTable table = new PdfPTable(width);
 		
 		table.setWidthPercentage(100);
 		
-		addTableHeader7(table);
+		addTableHeader8(table);
 		
 		lista.forEach(e->{
 			PdfPCell cell = new PdfPCell();
@@ -777,6 +796,68 @@ public class RipartoCamera extends AppoggioStampa{
 			table.addCell(cell3);
 			table.addCell(cell4);
 			table.addCell(cell5);
+		});
+		
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		
+		Paragraph p = new Paragraph();
+		p.add(table);
+		
+		document.add(p);
+		
+	}
+
+	private Comparator<? super Elemento> compareByDecimale() {
+		return (le, re) -> le.getQuoziente().getDecimale().compareTo(re.getQuoziente().getDecimale());
+	}
+	
+	private void generaProspetto7(List<Elemento> lista) throws DocumentException {
+		
+		document.newPage();
+
+		document.setPageCount(pageCount.getAndIncrement());
+		
+		String descLista = lista.stream().map(Elemento::getDescrizione).distinct().findFirst().orElseThrow();
+		document.add(addParagraph("PROSPETTO 7", 15));
+		document.add(addParagraph(descLista, 13));
+		
+		document.add(Chunk.NEWLINE);
+		document.add(addParagraph("", 15));
+		
+		float[] width = {10,30,20,20,10,10};
+
+		PdfPTable table = new PdfPTable(width);
+		
+		table.setWidthPercentage(100);
+		
+		addTableHeader8(table);
+		
+		lista.forEach(e->{
+			PdfPCell cell = new PdfPCell();
+			cell.addElement(addParagraph(String.valueOf(e.getTerritorio().getCodEnte()), 10));
+			PdfPCell cell2 = new PdfPCell();
+			cell2.addElement(addParagraph(String.valueOf(e.getTerritorio().getDescrizione()), 10));
+			PdfPCell cell12 = new PdfPCell();
+			cell12.addElement(addParagraph(String.valueOf(e.getQuoziente().getDecimale()), 10));
+			PdfPCell cell3 = new PdfPCell();
+			cell3.addElement(addParagraph(String.valueOf(e.getSeggiQI()), 10));
+			PdfPCell cell4 = new PdfPCell();
+			cell4.addElement(addParagraph(String.valueOf(e.getSeggiDecimali()), 10));
+			PdfPCell cell5 = new PdfPCell();
+			cell5.addElement(addParagraph(e.getDescrizione(), 10));
+			PdfPCell cell6 = new PdfPCell();
+			cell6.addElement(addParagraph(String.valueOf(""), 10));
+			
+			table.addCell(cell);			
+			table.addCell(cell2);
+			table.addCell(cell12);
+			table.addCell(cell3);
+			table.addCell(cell4);
+			table.addCell(cell5);
+			table.addCell(cell6);
 		});
 		
 		table.addCell(new PdfPCell());
@@ -851,14 +932,26 @@ public class RipartoCamera extends AppoggioStampa{
 	
 	private void addTableHeader7(PdfPTable table) {
 		Stream.of(Prospetto7.values())
-	      .forEach(columnTitle -> {
-	        PdfPCell header = new PdfPCell();
-	        header.setBackgroundColor(BaseColor.LIGHT_GRAY);
-	        header.setBorderWidth(2);
-	        header.setPhrase(new Phrase(columnTitle.getValue()));
-	        table.addCell(header);
-	    });		
+		.forEach(columnTitle -> {
+			PdfPCell header = new PdfPCell();
+			header.setBackgroundColor(BaseColor.LIGHT_GRAY);
+			header.setBorderWidth(2);
+			header.setPhrase(new Phrase(columnTitle.getValue()));
+			table.addCell(header);
+		});		
 	}
+
+	private void addTableHeader8(PdfPTable table) {
+		Stream.of(Prospetto8.values())
+		.forEach(columnTitle -> {
+			PdfPCell header = new PdfPCell();
+			header.setBackgroundColor(BaseColor.LIGHT_GRAY);
+			header.setBorderWidth(2);
+			header.setPhrase(new Phrase(columnTitle.getValue()));
+			table.addCell(header);
+		});		
+	}
+
 	
 	enum PartecipaRiparto{
 		SI,NO;
