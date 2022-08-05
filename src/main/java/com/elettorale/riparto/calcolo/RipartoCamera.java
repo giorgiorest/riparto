@@ -220,7 +220,7 @@ public class RipartoCamera extends AppoggioStampa{
 					Collectors.toMap(x -> x.getKey(), y -> (y.getValue().stream().map(Base::getNumSeggi).distinct().findFirst().orElseThrow()))).entrySet().stream().mapToInt(p->p.getValue()).sum();
 					
 					//map(Base::getNumSeggi).distinct().mapToInt(l->l).sum();
-			return new Territorio(m.getKey(), TipoTerritorio.CIRCOSCRIZIONE, circ.getDescCircoscrizione(), numSeggiCirc);
+			return new Territorio(m.getKey(), TipoTerritorio.CIRCOSCRIZIONE, circ.getDescCircoscrizione(), numSeggiCirc, circ.getCodEnte());
 		}).collect(Collectors.toList());
 		
 //		Creo mappa con territorio circ e valore lista di liste circ ammese
@@ -541,7 +541,7 @@ public class RipartoCamera extends AppoggioStampa{
 				List<Elemento> elementi = ammesse.stream().map(m ->{
 					Elemento ele =  new Elemento(m.getIdAggregatoRiparto(),
 							m.getDescLista(), m.getVotiLista(), null, null, m.getCoterCoali());
-					ele.setTerritorio(new Territorio(m.getIdCircoscrizione(), TipoTerritorio.CIRCOSCRIZIONE, m.getDescCircoscrizione(), null));
+					ele.setTerritorio(x.getKey());
 					return ele;
 				})
 						.collect(Collectors.toList());
@@ -669,7 +669,6 @@ public class RipartoCamera extends AppoggioStampa{
 			try {
 				generaProspetto7(e.getValue());
 			} catch (DocumentException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		});
@@ -760,7 +759,7 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		lista.forEach(e->{
 			PdfPCell cell = new PdfPCell();
-			cell.addElement(addParagraph("", 10));
+			cell.addElement(addParagraph(String.valueOf(e.getTerritorio().getCodEnte()), 10));
 			PdfPCell cell2 = new PdfPCell();
 			cell2.addElement(addParagraph(String.valueOf(e.getTerritorio().getDescrizione()), 10));
 			PdfPCell cell12 = new PdfPCell();

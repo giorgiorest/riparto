@@ -18,6 +18,7 @@ public class Base extends General{
 	private String descCollegioPluri;
 	private Integer idCircoscrizione;
 	private String descCircoscrizione;
+	private Integer codEnte;
 	private Integer numSeggi;
 	private Integer votiLista;
 	private String descLista;
@@ -68,6 +69,7 @@ public class Base extends General{
 		this.votiLista = b.getVotiLista();
 		this.votiSoloCand = b.getVotiSoloCand();
 		this.votiTotCand = b.getVotiTotCand();
+		this.codEnte = b.getCodEnte();
 		
 //		Base base = new Base();
 //		base.setCcp(b.getCcp());
@@ -273,6 +275,14 @@ public class Base extends General{
 	}
 	public void setCcp(Integer ccp) {
 		this.ccp = ccp;
+	}
+
+	public Integer getCodEnte() {
+		return codEnte;
+	}
+
+	public void setCodEnte(Integer codEnte) {
+		this.codEnte = codEnte;
 	}
 	
 	

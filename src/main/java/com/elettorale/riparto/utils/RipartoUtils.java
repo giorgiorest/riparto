@@ -113,13 +113,15 @@ public class RipartoUtils {
 		private String descrizione;
 		private TipoTerritorio tipoTerritorio;
 		private Integer numSeggi;
+		private Integer codEnte;
 		
-		public Territorio(Integer id, TipoTerritorio tipoTerritorio, String descrizione, Integer numSeggi) {
+		public Territorio(Integer id, TipoTerritorio tipoTerritorio, String descrizione, Integer numSeggi, Integer codEnte) {
 			super();
 			this.id = id;
 			this.tipoTerritorio = tipoTerritorio;
 			this.descrizione = descrizione;
 			this.setNumSeggi(numSeggi);
+			this.codEnte = codEnte;
 		}
 		public Integer getId() {
 			return id;
@@ -144,6 +146,12 @@ public class RipartoUtils {
 		}
 		public void setNumSeggi(Integer numSeggi) {
 			this.numSeggi = numSeggi;
+		}
+		public Integer getCodEnte() {
+			return codEnte;
+		}
+		public void setCodEnte(Integer codEnte) {
+			this.codEnte = codEnte;
 		}
 		@Override
 		public String toString() {
