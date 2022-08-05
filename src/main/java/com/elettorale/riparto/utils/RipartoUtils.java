@@ -26,6 +26,11 @@ public class RipartoUtils {
 		private Quoziente quoziente;
 		private Integer idCoalizione;
 		
+		//COMPENSAZIONE
+		private Integer ordineSottrazione;
+		private boolean cedeSeggio;
+		private boolean riceveSeggio;
+		
 		public Elemento(Integer id, String descrizione, Integer cifra, Integer resto, List<String> descrizioni, Integer idCoalizione) {
 			super();
 			this.id = id;
@@ -105,6 +110,24 @@ public class RipartoUtils {
 		public void setIdCoalizione(Integer idCoalizione) {
 			this.idCoalizione = idCoalizione;
 		}
+		public Integer getOrdineSottrazione() {
+			return ordineSottrazione;
+		}
+		public void setOrdineSottrazione(Integer ordineSottrazione) {
+			this.ordineSottrazione = ordineSottrazione;
+		}
+		public boolean isCedeSeggio() {
+			return cedeSeggio;
+		}
+		public void setCedeSeggio(boolean cedeSeggio) {
+			this.cedeSeggio = cedeSeggio;
+		}
+		public boolean isRiceveSeggio() {
+			return riceveSeggio;
+		}
+		public void setRiceveSeggio(boolean riceveSeggio) {
+			this.riceveSeggio = riceveSeggio;
+		}
 
 	}
 
@@ -155,8 +178,21 @@ public class RipartoUtils {
 		}
 		@Override
 		public String toString() {
-			// TODO Auto-generated method stub
 			return this.descrizione;
+		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			boolean ret = false;
+			
+			if(obj instanceof Territorio) {
+				Territorio t = (Territorio)obj;
+				
+				if(this.getId().compareTo(t.getId()) == 0) {
+					ret = true;
+				}
+			}
+			return ret;
 		}
 	}
 	
@@ -370,7 +406,7 @@ public class RipartoUtils {
 		DECIMALI
 	}
 
-	enum Ordinamento{
+	protected enum Ordinamento{
 		ASC,
 		DESC
 	}
@@ -445,7 +481,7 @@ public class RipartoUtils {
 				return e1.getCifraNazionale().compareTo(e2.getCifraNazionale());
 			}else {
 				//ordino per maggior seggi eccedentari
-				return e1.getDiff().compareTo(e2.getDiff());
+				return e2.getDiff().compareTo(e1.getDiff());
 			}
 			
 		});

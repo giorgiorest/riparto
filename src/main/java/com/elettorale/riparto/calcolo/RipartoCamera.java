@@ -168,7 +168,7 @@ public class RipartoCamera extends AppoggioStampa{
 			nazionaliCoaliListe.add(coali);
 		});
 		
-		//TODO Implemntare sbarramente minoranza + coalizione che partecipa con %cona < ed lista ammessa
+		//TODO Implementare sbarramente minoranza + coalizione che partecipa con %cona < ed lista ammessa
 		
 		//Sbarramento Coalizioni 10%
 		BigDecimal soglia10 = ripartoUtils.truncateDecimal(new BigDecimal(sommaVoti *((double)Sbarramento.DIECI.getValue()/100)), 2);
@@ -244,18 +244,21 @@ public class RipartoCamera extends AppoggioStampa{
 					
 					Integer sumVotiListaCirc = listeCircoscrizione.stream().mapToInt(Base::getVotiLista).sum();
 					
-					Base base = listeCircoscrizione.stream().findFirst().orElseThrow();
-					
-					Base b = new Base();
-					b.setDescLista(base.getDescLista());
-					b.setDescCircoscrizione(terpa.getDescrizione());
-					b.setIdCircoscrizione(terpa.getId());
-					b.setCoterCoali(base.getCoterCoali());
-					b.setIdAggregatoRiparto(base.getIdAggregatoRiparto());
-					b.setVotiLista(sumVotiListaCirc);
-					b.setPartecipaRipartoLista(lista.getPartecipaRipartoLista());
-					
-					liste.add(b);
+					if(!listeCircoscrizione.isEmpty()) {
+						
+						Base base = listeCircoscrizione.stream().findFirst().orElseThrow();
+						
+						Base b = new Base();
+						b.setDescLista(base.getDescLista());
+						b.setDescCircoscrizione(terpa.getDescrizione());
+						b.setIdCircoscrizione(terpa.getId());
+						b.setCoterCoali(base.getCoterCoali());
+						b.setIdAggregatoRiparto(base.getIdAggregatoRiparto());
+						b.setVotiLista(sumVotiListaCirc);
+						b.setPartecipaRipartoLista(lista.getPartecipaRipartoLista());
+						
+						liste.add(b);
+					}
 					
 				});
 				
@@ -286,6 +289,7 @@ public class RipartoCamera extends AppoggioStampa{
 		document.add(addParagraph("TOTALE VOTI VALIDI = "+this.getTotaleVotiValidi().toString(), 12));
 		document.add(addParagraph("VOTI VALIDI 3% = "+this.getVotiValidi1().toString(), 12));
 		document.add(addParagraph("VOTI VALIDI 10% = "+this.getVotiValidi3().toString(), 12));
+		
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 12));
 		
@@ -401,7 +405,10 @@ public class RipartoCamera extends AppoggioStampa{
 		document.add(addParagraph("NUM SEGGI = "+ String.valueOf(245), 15));
 		document.add(addParagraph("QUOZIENETE ELETTORALE NAZ = "+ String.valueOf(quoziente), 15));
 		
-//		document.add(addParagraph("VOTI VALIDI 3% = "+this.getVotiValidi3().toString()));
+		if(elements.stream().map(Elemento::getSorteggio).filter(w->w).findAny().isPresent()) {
+			document.add(addParagraph("BLOCCO NAZIONALE", 12));
+		}
+
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 15));
 		
@@ -528,6 +535,13 @@ public class RipartoCamera extends AppoggioStampa{
 		Paragraph p = new Paragraph();
 		p.add(table);
 		
+		if(elements.stream().map(Elemento::getSorteggio).distinct().findFirst().orElse(false)) {
+			Paragraph pp = new Paragraph();
+			Chunk chunk = new Chunk("Alcuni seggi non sono stati assegnati.", FontFactory.getFont(FontFactory.COURIER, 15,Font.BOLD, BaseColor.RED));		
+			pp.add(chunk);
+			document.add(pp);
+		}
+		
 		document.add(p);
 		
 	}
@@ -625,6 +639,12 @@ public class RipartoCamera extends AppoggioStampa{
 		Paragraph p = new Paragraph();
 		p.add(table);
 		
+		if(elements.stream().map(Elemento::getSorteggio).distinct().findFirst().orElse(false)) {
+			Paragraph pp = new Paragraph();
+			Chunk chunk = new Chunk("Alcuni seggi non sono stati assegnati.", FontFactory.getFont(FontFactory.COURIER, 15,Font.BOLD, BaseColor.RED));		
+			pp.add(chunk);
+			document.add(pp);
+		}
 		document.add(p);
 		
 	}
@@ -657,7 +677,7 @@ public class RipartoCamera extends AppoggioStampa{
 			if(prosp.getDiff().compareTo(0) > 0) {
 				//ECCENTARIE
 				mapEccedentarie.put(lista.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(), lista);
-			}else {
+			}else if(prosp.getDiff().compareTo(0) < 0){
 				//DEFICITARIE
 				mapDeficitarie.put(lista.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(), lista);
 			}
@@ -720,19 +740,87 @@ public class RipartoCamera extends AppoggioStampa{
 		
 	}
 
+	private void generaPdf() {
+		
+	}
 	private void compensazioneCircoscrizionale(List<Prospetto6> listProspetto6) throws DocumentException {
 
 		RipartoUtils utils = new RipartoUtils();
 		
-		List<Prospetto6> eccedntarie = listProspetto6.stream().filter(l->l.getDiff().compareTo(0)>0).collect(Collectors.toList());
-		
-		eccedntarie = utils.sortByDiffCifra(eccedntarie);
-		
-		eccedntarie.forEach(e->{
-			List<Elemento> elements = mapEccedentarie.get(e.getIdAggregato());
-			
-			elements.sort(compareByDecimale());
-		});
+//		List<Prospetto6> eccedntarie = listProspetto6.stream().filter(l->l.getDiff().compareTo(0)>0).collect(Collectors.toList());
+//		
+//		eccedntarie = utils.sortByDiffCifra(eccedntarie);
+//		
+//		eccedntarie.forEach(e->{
+//			List<Elemento> elements = mapEccedentarie.get(e.getIdAggregato());
+//			
+//			elements.sort(compareByDecimale(Ordinamento.DESC));
+//		});
+//		
+//		List<Elemento> listaDeficitarie = mapDeficitarie.values().stream().flatMap(List::stream).collect(Collectors.toList());
+//		
+//
+//		AtomicInteger ordineSottrazione = new AtomicInteger(1);
+//		
+//		eccedntarie.forEach(e->{
+//			
+//			log.info("Lista ECCEDNTARIA: {}", e.getDescLista());
+//			
+//			boolean isSorteggio = false;
+//			
+//			AtomicInteger seggiDaAssegnare = new AtomicInteger(e.getDiff());
+//			
+//			List<Elemento> listeEccedntarie = mapEccedentarie.get(e.getIdAggregato());
+//			
+//			while (seggiDaAssegnare.get() > 0 || !isSorteggio) {
+//				
+//				listeEccedntarie.sort(compareByDecimale(Ordinamento.DESC));
+//				
+//				List<Elemento> collect = listeEccedntarie.stream().filter(l->l.getId().compareTo(e.getIdAggregato()) == 0).collect(Collectors.toList());
+//				
+//				for(Elemento ecc : collect) {
+//					//se ottenuto seggi con i decimali può cedere e non ha già ceduto il seggio decimale
+//					log.info("Eccedentaria {}", ecc.getTerritorio().getDescrizione());
+//
+//					if(seggiDaAssegnare.get() == 0) {
+//						return;
+//					}
+//					
+//					if(ecc.getSeggiDecimali().compareTo(0) > 0 && !ecc.isCedeSeggio()) {
+//						Territorio terrEcc = ecc.getTerritorio();
+//						
+//						//cerco deficitaria nello stesso territorio
+//						listaDeficitarie.sort(compareByDecimale(Ordinamento.DESC));
+//						
+//						listaDeficitarie.forEach(def->{
+//							//se deficitaria nello stesso territorio e non ha preso seggi con decimali può prendere seggio
+//							
+////							log.info("Circoscrizione: {}, deficitaria: {}", def.getTerritorio().getDescrizione(), def.getDescrizione());
+//							
+//							if(terrEcc.equals(def.getTerritorio()) && def.getSeggiDecimali().compareTo(0) == 0) {
+//								log.info("Assegnato 1 seggio a: {} in {}. RIMANENTI: {}", def.getDescrizione(),def.getTerritorio().getDescrizione(), seggiDaAssegnare.get());
+//								seggiDaAssegnare.getAndDecrement();
+//								
+//								def.setRiceveSeggio(true);
+//								ecc.setCedeSeggio(true);
+//								
+//								def.setOrdineSottrazione(ordineSottrazione.get());
+//								ecc.setOrdineSottrazione(ordineSottrazione.getAndIncrement());
+//								return;
+//							}
+//						});//end loop deficitarie
+//					}
+//					
+//					//se ho assegnato tutti i seggi esco dal loop
+//					if(seggiDaAssegnare.get() == 0) {
+//						return;
+//					}
+//				}//end loop eccedentarie
+//				
+//				//SHIFT cerco in altre circoscrizioni
+////				log.error("SHIFT    !!!!!!");
+//			}//end while
+//		});
 		
 		mapEccedentarie.entrySet().forEach(e->{
 			try {
@@ -744,15 +832,17 @@ public class RipartoCamera extends AppoggioStampa{
 				}
 		});
 		
-		mapDeficitarie.entrySet().forEach(d->{
-			log.info("GENERAZIONE PROSPETTO 8");
-			try {
-				generaProspetto8(d.getValue());
-			} catch (DocumentException e1) {
-				log.error("ERROR GENERAZIONE PROSPETTO 8:{}", e1.getMessage());	
-			}
-			log.info("FINE GENERAZIONE PROSPETTO 8");
-		});
+		List<Elemento> deficitarie = mapDeficitarie.values().stream().flatMap(List::stream).collect(Collectors.toList());
+		
+		deficitarie.sort(compareByDecimale(Ordinamento.DESC));
+		
+		log.info("GENERAZIONE PROSPETTO 8");
+		try {
+			generaProspetto8(deficitarie);
+		} catch (DocumentException e1) {
+			log.error("ERROR GENERAZIONE PROSPETTO 8:{}", e1.getMessage());	
+		}
+		log.info("FINE GENERAZIONE PROSPETTO 8");
 		
 	}
 
@@ -761,14 +851,12 @@ public class RipartoCamera extends AppoggioStampa{
 
 		document.setPageCount(pageCount.getAndIncrement());
 		
-		String descLista = lista.stream().map(Elemento::getDescrizione).distinct().findFirst().orElseThrow();
 		document.add(addParagraph("PROSPETTO 8", 15));
-		document.add(addParagraph(descLista, 13));
 		
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 15));
 		
-		float[] width = {10,30,20,20,10,10,10};
+		float[] width = {10,25,10,10,10,25,10};
 
 		PdfPTable table = new PdfPTable(width);
 		
@@ -788,68 +876,9 @@ public class RipartoCamera extends AppoggioStampa{
 			PdfPCell cell4 = new PdfPCell();
 			cell4.addElement(addParagraph(String.valueOf(e.getSeggiDecimali()), 10));
 			PdfPCell cell5 = new PdfPCell();
-			cell4.addElement(addParagraph(String.valueOf(""), 10));
-			
-			table.addCell(cell);			
-			table.addCell(cell2);
-			table.addCell(cell12);
-			table.addCell(cell3);
-			table.addCell(cell4);
-			table.addCell(cell5);
-		});
-		
-		table.addCell(new PdfPCell());
-		table.addCell(new PdfPCell());
-		table.addCell(new PdfPCell());
-		table.addCell(new PdfPCell());
-		
-		Paragraph p = new Paragraph();
-		p.add(table);
-		
-		document.add(p);
-		
-	}
-
-	private Comparator<? super Elemento> compareByDecimale() {
-		return (le, re) -> le.getQuoziente().getDecimale().compareTo(re.getQuoziente().getDecimale());
-	}
-	
-	private void generaProspetto7(List<Elemento> lista) throws DocumentException {
-		
-		document.newPage();
-
-		document.setPageCount(pageCount.getAndIncrement());
-		
-		String descLista = lista.stream().map(Elemento::getDescrizione).distinct().findFirst().orElseThrow();
-		document.add(addParagraph("PROSPETTO 7", 15));
-		document.add(addParagraph(descLista, 13));
-		
-		document.add(Chunk.NEWLINE);
-		document.add(addParagraph("", 15));
-		
-		float[] width = {10,30,20,20,10,10};
-
-		PdfPTable table = new PdfPTable(width);
-		
-		table.setWidthPercentage(100);
-		
-		addTableHeader8(table);
-		
-		lista.forEach(e->{
-			PdfPCell cell = new PdfPCell();
-			cell.addElement(addParagraph(String.valueOf(e.getTerritorio().getCodEnte()), 10));
-			PdfPCell cell2 = new PdfPCell();
-			cell2.addElement(addParagraph(String.valueOf(e.getTerritorio().getDescrizione()), 10));
-			PdfPCell cell12 = new PdfPCell();
-			cell12.addElement(addParagraph(String.valueOf(e.getQuoziente().getDecimale()), 10));
-			PdfPCell cell3 = new PdfPCell();
-			cell3.addElement(addParagraph(String.valueOf(e.getSeggiQI()), 10));
-			PdfPCell cell4 = new PdfPCell();
-			cell4.addElement(addParagraph(String.valueOf(e.getSeggiDecimali()), 10));
-			PdfPCell cell5 = new PdfPCell();
-			cell5.addElement(addParagraph(e.getDescrizione(), 10));
+			cell5.addElement(addParagraph(String.valueOf(e.getDescrizione()), 10));
 			PdfPCell cell6 = new PdfPCell();
-			cell6.addElement(addParagraph(String.valueOf(""), 10));
+			cell6.addElement(addParagraph(String.valueOf(Objects.isNull(e.getOrdineSottrazione()) ? "" : e.getOrdineSottrazione()), 10));
 			
 			table.addCell(cell);			
 			table.addCell(cell2);
@@ -872,6 +901,74 @@ public class RipartoCamera extends AppoggioStampa{
 		
 	}
 
+	private Comparator<? super Elemento> compareByDecimale(Ordinamento ordinamento) {
+		switch (ordinamento) {
+		case DESC:
+			return (le, re) -> re.getQuoziente().getDecimale().compareTo(le.getQuoziente().getDecimale());
+		case ASC:
+			return (le, re) -> le.getQuoziente().getDecimale().compareTo(re.getQuoziente().getDecimale());
+		default:
+			//default ordina ASC
+			return (le, re) -> le.getQuoziente().getDecimale().compareTo(re.getQuoziente().getDecimale());
+		}
+	}
+	
+	private void generaProspetto7(List<Elemento> lista) throws DocumentException {
+		
+		document.newPage();
+
+		document.setPageCount(pageCount.getAndIncrement());
+		
+		String descLista = lista.stream().map(Elemento::getDescrizione).distinct().findFirst().orElseThrow();
+		document.add(addParagraph("PROSPETTO 7", 15));
+		document.add(addParagraph(descLista, 13));
+		
+		document.add(Chunk.NEWLINE);
+		document.add(addParagraph("", 15));
+		
+		float[] width = {10,30,20,20,10,10};
+
+		PdfPTable table = new PdfPTable(width);
+		
+		table.setWidthPercentage(100);
+		
+		addTableHeader7(table);
+		
+		lista.forEach(e->{
+			PdfPCell cell = new PdfPCell();
+			cell.addElement(addParagraph(String.valueOf(e.getTerritorio().getCodEnte()), 10));
+			PdfPCell cell2 = new PdfPCell();
+			cell2.addElement(addParagraph(String.valueOf(e.getTerritorio().getDescrizione()), 10));
+			PdfPCell cell12 = new PdfPCell();
+			cell12.addElement(addParagraph(String.valueOf(e.getQuoziente().getDecimale()), 10));
+			PdfPCell cell3 = new PdfPCell();
+			cell3.addElement(addParagraph(String.valueOf(e.getSeggiQI()), 10));
+			PdfPCell cell4 = new PdfPCell();
+			cell4.addElement(addParagraph(String.valueOf(e.getSeggiDecimali()), 10));
+			PdfPCell cell5 = new PdfPCell();
+			cell5.addElement(addParagraph(String.valueOf(Objects.isNull(e.getOrdineSottrazione()) ? "" : e.getOrdineSottrazione()), 10));
+			
+			table.addCell(cell);			
+			table.addCell(cell2);
+			table.addCell(cell12);
+			table.addCell(cell3);
+			table.addCell(cell4);
+			table.addCell(cell5);
+		});
+		
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		
+		Paragraph p = new Paragraph();
+		p.add(table);
+		
+		document.add(p);
+		
+	}
+
+	
 	private Paragraph addParagraph(String value, int fontSize) {
 		value = Objects.isNull(value) ? "" : value;
 		Paragraph p = new Paragraph();
