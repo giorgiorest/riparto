@@ -783,11 +783,11 @@ public class RipartoCamera extends AppoggioStampa{
 
 		RipartoUtils utils = new RipartoUtils();
 		
-		List<Prospetto6> eccedntarie = listProspetto6.stream().filter(l->l.getDiff().compareTo(0)>0).collect(Collectors.toList());
+		List<Prospetto6> eccedntarieNaz = listProspetto6.stream().filter(l->l.getDiff().compareTo(0)>0).collect(Collectors.toList());
 		
-		eccedntarie = utils.sortByDiffCifra(eccedntarie);
+		eccedntarieNaz = utils.sortByDiffCifra(eccedntarieNaz);
 		
-		eccedntarie.forEach(e->{
+		eccedntarieNaz.forEach(e->{
 			List<Elemento> elements = mapEccedentarie.get(e.getId());
 			
 			elements.sort(compareByDecimale(Ordinamento.DESC));
@@ -798,7 +798,7 @@ public class RipartoCamera extends AppoggioStampa{
 
 		AtomicInteger ordineSottrazione = new AtomicInteger(1);
 		
-		eccedntarie.forEach(e->{
+		eccedntarieNaz.forEach(e->{
 			
 			log.info("Lista ECCEDNTARIA: {}", e.getDescLista());
 			
@@ -812,9 +812,10 @@ public class RipartoCamera extends AppoggioStampa{
 				
 				listeEccedntarie.sort(compareByDecimale(Ordinamento.DESC));
 				
-				List<Elemento> collect = listeEccedntarie.stream().filter(l->l.getIdCoalizione().compareTo(e.getId()) == 0).collect(Collectors.toList());
+				List<Elemento> eccedntarie = listeEccedntarie.stream().filter(l->l.getIdCoalizione().compareTo(e.getId()) == 0).collect(Collectors.toList());
 				
-				for(Elemento ecc : collect) {
+				//ciclo eccedntarie e vedo se posso dare nella stessa ente
+				for(Elemento ecc : eccedntarie) {
 					//se ottenuto seggi con i decimali può cedere e non ha già ceduto il seggio decimale
 					log.info("Eccedentaria {}", ecc.getTerritorio().getDescrizione());
 
@@ -829,6 +830,28 @@ public class RipartoCamera extends AppoggioStampa{
 						
 						//cerco deficitaria nello stesso territorio
 						assegnato = assegnaSeggiDeficitaria(listaDeficitarie, ordineSottrazione, seggiDaAssegnare, ecc, terrEcc, false);
+						
+					}
+					
+					//se ho assegnato tutti i seggi esco dal loop
+					if(seggiDaAssegnare.get() == 0) {
+						break;
+					}
+				}//end loop eccedentarie
+				
+				//SHIFT cerco in altre circoscrizioni
+				for(Elemento ecc : eccedntarie) {
+					//se ottenuto seggi con i decimali può cedere e non ha già ceduto il seggio decimale
+					log.info("Eccedentaria SHIFT {}", ecc.getTerritorio().getDescrizione());
+
+					if(seggiDaAssegnare.get() == 0) {
+						return;
+					}
+					
+					if(puoAssegnareSeggio(ecc)) {
+						Territorio terrEcc = ecc.getTerritorio();
+						
+						boolean assegnato = false;
 						
 						//CASISTICA SHIFT
 						//cerco deficitaria in altro territorio
@@ -849,8 +872,6 @@ public class RipartoCamera extends AppoggioStampa{
 					}
 				}//end loop eccedentarie
 				
-				//SHIFT cerco in altre circoscrizioni
-//				log.error("SHIFT    !!!!!!");
 			}//end while
 		});
 		
@@ -884,14 +905,14 @@ public class RipartoCamera extends AppoggioStampa{
 
 	private boolean assegnaSeggiDeficitaria(List<Elemento> listaDeficitarie, AtomicInteger ordineSottrazione,
 			AtomicInteger seggiDaAssegnare, Elemento eccedentaria, Territorio terrEccedentaria, boolean isShift) {
-		listaDeficitarie.sort(compareByDecimale(Ordinamento.DESC));
+		listaDeficitarie.sort(compareByDecimale(Ordinamento.ASC));
 		
 		boolean assegnato = false;
 		
 		for (Elemento def : listaDeficitarie) {
 			//se deficitaria nello stesso territorio e non ha preso seggi con decimali può prendere seggio
 			
-			if((terrEccedentaria.equals(def.getTerritorio()) || isShift) && def.getSeggiDecimali().compareTo(0) == 0) {
+			if((terrEccedentaria.equals(def.getTerritorio()) || isShift) && def.getSeggiDecimali().compareTo(0) == 0 && !def.isRiceveSeggio()) {
 				log.info("Assegnato 1 seggio a: {} in {}. RIMANENTI: {}", def.getDescrizione(),def.getTerritorio().getDescrizione(), seggiDaAssegnare.get());
 				seggiDaAssegnare.getAndDecrement();
 				
@@ -910,6 +931,8 @@ public class RipartoCamera extends AppoggioStampa{
 	}
 
 	private void generaProspetto8(List<Elemento> lista) throws DocumentException {
+
+		lista.sort(compareByDecimale(Ordinamento.ASC));
 		document.newPage();
 
 		document.setPageCount(pageCount.getAndIncrement());
