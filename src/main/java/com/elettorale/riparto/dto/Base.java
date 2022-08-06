@@ -2,7 +2,7 @@ package com.elettorale.riparto.dto;
 
 import java.util.Date;
 
-public class Base extends General{
+public class Base {
 
 	private Integer idCandidato;
 	private String nome;
@@ -41,7 +41,7 @@ public class Base extends General{
 	
 	public Base(Base b) {
 
-		super(b);
+//		super(b);
 		this.ccp = b.getCcp();
 		this.cognome = b.getCognome();
 		this.coterAcqte = b.getCoterAcqte();

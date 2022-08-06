@@ -14,11 +14,11 @@ public class General extends RipartoUtils{
 	public General() {
 		// TODO Auto-generated constructor stub
 	}
-	public General(Base b) {
-		super();
-		this.percentualeLista = b.getPercentualeLista();
-		this.partecipaRipartoLista = b.getPartecipaRipartoLista();
-	}
+//	public General(Base b) {
+//		super();
+//		this.percentualeLista = b.getPercentualeLista();
+//		this.partecipaRipartoLista = b.getPartecipaRipartoLista();
+//	}
 	public BigDecimal getPercentualeLista() {
 		return percentualeLista;
 	}

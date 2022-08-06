@@ -4,10 +4,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.elettorale.riparto.utils.RipartoUtils.Elemento;
+
 public class Coalizione {
 
 	private Integer idCoalizone;
-	private List<Base> liste;
+	private List<Elemento> liste;
 	private Integer numVotiCoalizione;
 	private String descCoalizione;
 	private BigDecimal percentualeCoalizione;
@@ -18,14 +20,14 @@ public class Coalizione {
 		// TODO Auto-generated constructor stub
 	}
 	
-	public Coalizione(List<Base> liste) {
+	public Coalizione(List<Elemento> liste) {
 		this.liste = new ArrayList<>();
 		this.liste.addAll(liste);
 	}
-	public List<Base> getListe() {
+	public List<Elemento> getListe() {
 		return liste;
 	}
-	public void setListe(List<Base> liste) {
+	public void setListe(List<Elemento> liste) {
 		this.liste = liste;
 	}
 	public Integer getNumVotiCoalizione() {

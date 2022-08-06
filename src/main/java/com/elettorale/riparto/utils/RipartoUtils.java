@@ -6,13 +6,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.elettorale.riparto.dto.General;
+
 public class RipartoUtils {
 
 	
 	/**
 	 * Superclasse da estendere per avere una gestione centralizzata
 	 */
-	public class Elemento{
+	public class Elemento extends General{
 		private Integer id;
 		private String descrizione;
 		private Integer cifra;
@@ -30,6 +32,7 @@ public class RipartoUtils {
 		private Integer ordineSottrazione;
 		private boolean cedeSeggio;
 		private boolean riceveSeggio;
+		private boolean shift;
 		
 		public Elemento(Integer id, String descrizione, Integer cifra, Integer resto, List<String> descrizioni, Integer idCoalizione) {
 			super();
@@ -129,6 +132,17 @@ public class RipartoUtils {
 			this.riceveSeggio = riceveSeggio;
 		}
 
+		public boolean isShift() {
+			return shift;
+		}
+		public void setShift(boolean shift) {
+			this.shift = shift;
+		}
+		@Override
+		public String toString() {
+			// TODO Auto-generated method stub
+			return this.descrizione+" QI:"+this.seggiQI +" DEC: "+this.seggiDecimali;
+		}
 	}
 
 	public class Territorio{
@@ -419,7 +433,7 @@ public class RipartoUtils {
 	}
 	
 	public class Prospetto6{
-		private Integer idAggregato;
+		private Integer id;
 		private String descLista;
 		private Integer seggiQICirc;
 		private Integer seggiTotCirc;
@@ -428,11 +442,11 @@ public class RipartoUtils {
 		
 		private Integer cifraNazionale;
 		
-		public Integer getIdAggregato() {
-			return idAggregato;
+		public Integer getId() {
+			return id;
 		}
-		public void setIdAggregato(Integer idAggregato) {
-			this.idAggregato = idAggregato;
+		public void setId(Integer idAggregato) {
+			this.id = idAggregato;
 		}
 		public String getDescLista() {
 			return descLista;
