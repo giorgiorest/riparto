@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,6 +25,7 @@ import com.elettorale.riparto.constants.Prospetto7;
 import com.elettorale.riparto.constants.Prospetto8;
 import com.elettorale.riparto.dto.Base;
 import com.elettorale.riparto.dto.Coalizione;
+import com.elettorale.riparto.utils.Prospetto9;
 import com.elettorale.riparto.utils.RipartoUtils;
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Chunk;
@@ -39,7 +39,6 @@ import com.itextpdf.text.Phrase;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
-import com.itextpdf.text.pdf.StringUtils;
 
 public class RipartoCamera extends AppoggioStampa{
 
@@ -57,6 +56,8 @@ public class RipartoCamera extends AppoggioStampa{
 	
 	//mappa deficitarie(key idAggregato, value liste)
 	private Map<Integer, List<Elemento>> mapDeficitarie = new HashMap<>();
+	
+	private List<Prospetto9> listProspetto9 = new ArrayList<>();
 	
 	public RipartoCamera(List<Base> list) {
 		this.list = list;
@@ -82,18 +83,21 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		List<Elemento> ripartoColizioniNazionale = ripartoCoalizioniListeNazionali(nazionali, dataElezione);
 		
-		List<Elemento> ripartoColizioni = ripartoTraListeInCoalizione(ripartoColizioniNazionale, nazionali);
+		ripartoTraListeInCoalizione(ripartoColizioniNazionale, nazionali);
 		//END livello NAZIONE
 		
 		//START livello CIRCOSCRIZIONE
 		ripartoListeCircoscrizione(nazionali);
 		//START livello CIRCOSCRIZIONE
 		
-		//COnfranto tra livello circ e naz
+		//Confronto tra livello circ e naz
 		List<Prospetto6> listProspetto6 = confrontoCircoscrizionaleNazionale(ripartoColizioniNazionale);
 		
-//		//Compensazione Eccedentarie Deficitarie Livello circoscrizione
+		//Compensazione Eccedentarie Deficitarie Livello circoscrizione
 		compensazioneCircoscrizionale(listProspetto6);
+		
+		//ripartizione seggi tra coalizioni in circosricioni post compensazione
+		ripartoSeggiCoalizioniPostCompensazione();
 		
 		document.close();
 		
@@ -101,26 +105,67 @@ public class RipartoCamera extends AppoggioStampa{
 		return path;
 	}
 
+	private void ripartoSeggiCoalizioniPostCompensazione() {
+		
+		List<Territorio> circoscrizioni= mapCircListeElemento.keySet().stream().collect(Collectors.toList());
+		
+//		circoscrizioni = circoscrizioni.stream().filter(l->l.getId().compareTo(106220144) ==0).collect(Collectors.toList());
+		List<Integer> idsCoalizioni = new ArrayList<>();
+		
+		idsCoalizioni.addAll(listProspetto9.stream().map(e->e.getDeficitaria().getIdCoalizione()).distinct().collect(Collectors.toList()));
+		idsCoalizioni.addAll(listProspetto9.stream().map(e->e.getEccedntaria().getIdCoalizione()).distinct().collect(Collectors.toList()));
+		
+		circoscrizioni.forEach(ente->{
+			log.info(ente.getDescrizione());
+			List<Elemento> elements = mapCircListeElemento.get(ente).stream().filter(l->idsCoalizioni.contains(l.getIdCoalizione())).collect(Collectors.toList());
+			
+			mapCircListe.get(ente).stream().filter(k->Objects.nonNull(k.getIdCoalizone()) && idsCoalizioni.contains(k.getIdCoalizone())).forEach(coal->{
+				
+				List<Elemento> listeInCoalizione = new ArrayList<>();
+				
+				listeInCoalizione = coal.getListe().stream().filter(w->w.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString())).collect(Collectors.toList());
+				
+//				List<Elemento> listeInCoalizione = coal.getListe().stream().map(j->new Elemento(j)).collect(Collectors.toList());
+				
+//				elements.stream().collect(Collectors.groupingBy(Elemento::getIdCoalizione)).entrySet().forEach(el->{
+					
+						//Calcolo Tot votiCoali
+						Integer numVoti = listeInCoalizione.stream().mapToInt(Elemento::getCifra).sum();
+						
+						Integer numSeggi = elements.stream().filter(r->r.getIdCoalizione().compareTo(coal.getIdCoalizone()) == 0).collect(Collectors.toList()).stream().mapToInt(l -> l.getSeggiQI() + l.getSeggiDecimali()
+								+ (Objects.isNull(l.getSeggioCompensazione()) ? 0 : l.getSeggioCompensazione())).sum();
+
+						Quoziente quozEletCirc = getQuoziente(numVoti,numSeggi, null);
+						
+						listeInCoalizione.forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null)));
+						
+						Quoziente q = new Quoziente();
+
+						if(numSeggi > 0) {
+							q = assegnaseggiQIMassimiResti(listeInCoalizione, numSeggi, numVoti,TipoOrdinamento.DECIMALI);
+						}
+						
+						log.info("GENERAZIONE PROSPETTO 10");
+						try {
+							generaProspetto5(ente.getDescrizione(), listeInCoalizione, q.getQuoziente(), numSeggi, numVoti, 10);
+						} catch (DocumentException e1) {
+							e1.printStackTrace();
+						}
+						log.info("FINE GENERAZIONE PROSPETTO 10");
+//				});
+			});
+			
+			
+		});
+		
+	}
 
 	public List<Coalizione> calcolaCifraNazionale() throws DocumentException {
 		log.info("ESTRAGGO LISTE NAZIONALI E SOMMO VOTI");
 
-//		List<Base> nazionali = new ArrayList<>();
 		List<Elemento> nazionali = new ArrayList<>();
 
 		//Raggruppo dati a livello nazione
-//		list.stream().collect(Collectors.groupingBy(Base::getIdAggregatoRiparto)).entrySet().stream().collect(
-//				Collectors.toMap(y -> {
-//					Base b = y.getValue().stream().findFirst().orElseThrow();
-//					
-//					return new Base(b.getDescLista(), b.getCoterCoali(), b.getIdAggregatoRiparto());
-//				}, x -> x.getValue().stream().mapToInt(Base::getVotiLista).sum()))
-//				.entrySet().forEach(e -> {
-//					Base b = new Base(e.getKey().getDescLista(), e.getKey().getCoterCoali(), e.getKey().getIdAggregatoRiparto());
-//					b.setVotiLista(e.getValue());
-//					b.setCcp(e.getKey().getIdAggregatoRiparto());
-//					nazionali.add(b);
-//				});
 		list.stream().collect(Collectors.groupingBy(Base::getIdAggregatoRiparto)).entrySet().forEach(y->{
 			Base base = y.getValue().stream().findFirst().orElseThrow();
 			nazionali.add(new Elemento(base.getIdAggregatoRiparto(), base.getDescLista(),
@@ -140,7 +185,7 @@ public class RipartoCamera extends AppoggioStampa{
 		//Sbarramento Liste 3%
 		BigDecimal soglia3 = ripartoUtils.truncateDecimal(new BigDecimal(sommaVoti * ((double)Sbarramento.TRE.getValue()/100)), 2);
 
-//		Sbarramento Liste 1%
+		//Sbarramento Liste 1%
 		BigDecimal soglia1 = ripartoUtils.truncateDecimal(new BigDecimal(sommaVoti * ((double)Sbarramento.UNO.getValue()/100)), 2);
 		
 		this.setVotiValidi1(soglia3);
@@ -255,23 +300,17 @@ public class RipartoCamera extends AppoggioStampa{
 					
 					if(!listeCircoscrizione.isEmpty()) {
 						
-						listeCircoscrizione.stream().forEach(l->{
-							Elemento el = new Elemento(l.getIdAggregatoRiparto(), l.getDescLista(), sumVotiListaCirc, null, null, l.getCoterCoali());
-							el.setPartecipaRipartoLista(lista.getPartecipaRipartoLista());
-							el.setPartecipaInCoalizione(lista.getPartecipaInCoalizione());
-							liste.add(el);
-						});
+						Base firstElemento = listeCircoscrizione.stream().findFirst().orElseThrow();
 						
-//						Base base = listeCircoscrizione.stream().findFirst().orElseThrow();
-//						
-//						Base b = new Base();
-//						b.setDescLista(base.getDescLista());
-//						b.setDescCircoscrizione(terpa.getDescrizione());
-//						b.setIdCircoscrizione(terpa.getId());
-//						b.setCoterCoali(base.getCoterCoali());
-//						b.setIdAggregatoRiparto(base.getIdAggregatoRiparto());
-//						b.setVotiLista(sumVotiListaCirc);
-//						b.setPartecipaRipartoLista(lista.getPartecipaRipartoLista());
+						Elemento el = new Elemento(firstElemento.getIdAggregatoRiparto(), firstElemento.getDescLista(), sumVotiListaCirc, null, null, firstElemento.getCoterCoali());
+						el.setPartecipaRipartoLista(lista.getPartecipaRipartoLista());
+						el.setPartecipaInCoalizione(lista.getPartecipaInCoalizione());
+						el.setTerritorio(new Territorio(firstElemento.getIdCircoscrizione(),
+								TipoTerritorio.CIRCOSCRIZIONE, firstElemento.getDescCircoscrizione(), sumVotiListaCirc,
+								firstElemento.getCodEnte()));
+						liste.add(el);
+//						listeCircoscrizione.stream().forEach(l->{
+//						});
 						
 					}
 					
@@ -281,6 +320,8 @@ public class RipartoCamera extends AppoggioStampa{
 				coali.setDescCoalizione(liste.stream().map(Elemento::getDescrizione).distinct().collect(Collectors.joining("-")));
 				coali.setNumVotiCoalizione(liste.stream().mapToInt(Elemento::getCifra).sum());
 				coali.setPartecipaRipartoCoalizione(PartecipaRiparto.SI.toString());
+				coali.setIsCoalizione(liste.size() > 1);
+				coali.setIdCoalizone(coal.getIdCoalizone());
 				
 				listaCoalizione.add(coali);
 			
@@ -372,8 +413,6 @@ public class RipartoCamera extends AppoggioStampa{
 				c.getListe().removeIf(l->l.getPartecipaRipartoLista().equals(PartecipaRiparto.NO.toString()));
 		});
 		
-		RipartoUtils utils = new RipartoUtils();		
-		
 		//mapping liste coalizoni in ELemento
 		List<Elemento> elements = new ArrayList<>();
 		
@@ -382,12 +421,12 @@ public class RipartoCamera extends AppoggioStampa{
 				Coalizione c = (Coalizione)e;
 				c.getListe().removeIf(l->l.getPartecipaRipartoLista().equals(PartecipaRiparto.NO.toString()));
 				
-				elements.add(utils.new Elemento(null, c.getDescCoalizione(), c.getNumVotiCoalizione(),
+				elements.add(new Elemento(null, c.getDescCoalizione(), c.getNumVotiCoalizione(),
 						null, c.getListe().stream().map(Elemento::getDescrizione).collect(Collectors.toList()),
 						c.getIdCoalizone()));
 				
 			}else {
-				elements.add(utils.new Elemento(null, e.getDescCoalizione(), e.getNumVotiCoalizione(), null,
+				elements.add(new Elemento(null, e.getDescCoalizione(), e.getNumVotiCoalizione(), null,
 						Arrays.asList(e.getDescCoalizione()), e.getIdCoalizone()));
 			}
 			
@@ -396,28 +435,32 @@ public class RipartoCamera extends AppoggioStampa{
 		//Calcolo Tot votiCoali
 		Integer sumVotiCOali = elements.stream().mapToInt(Elemento::getCifra).sum();
 		
-		//TODO recupera voti da db
-		Integer numSeggi = 245;
+		//recupera voti da db
+		Integer numSeggi  = list.stream().collect(Collectors.groupingBy(Base::getIdCollegioPluri)).entrySet().stream()
+				.collect(Collectors.toMap(x -> x.getKey(), y -> y.getValue().stream().findFirst().get().getNumSeggi()))
+				.values().stream().mapToInt(s -> s).sum();
 
-		Quoziente q = utils.assegnaseggiQIMassimiResti(elements, numSeggi, sumVotiCOali,TipoOrdinamento.RESTI);
+		Quoziente q = assegnaseggiQIMassimiResti(elements, numSeggi, sumVotiCOali,TipoOrdinamento.RESTI);
 		
 		log.info("GENERAZIONE PROSPETTO 2");
-		generaProspetto2(elements, sumVotiCOali, q.getQuoziente());
+		generaProspetto2(elements, sumVotiCOali, q.getQuoziente(), 2, null, numSeggi);
 		log.info("FINE GENERAZIONE PROSPETTO 2");
 		
 		return elements;
 	}
 	
-	private void generaProspetto2(List<Elemento> elements, Integer sumVotiCOali, Integer quoziente) throws DocumentException {
+	private void generaProspetto2(List<Elemento> elements, Integer sumVotiCOali, Integer quoziente, int numProsp, String circ, Integer numSeggi) throws DocumentException {
 
 		document.newPage();
 
 		document.setPageCount(pageCount.getAndIncrement());
 		
-		document.add(addParagraph("PROSPETTO 2", 15));
-		
+		document.add(addParagraph("PROSPETTO "+numProsp, 15));
+		if(circ != null) {
+			document.add(addParagraph("CIRCOSCRIZIONE = "+ circ, 15));
+		}
 		document.add(addParagraph("TOTALE VOTI VALIDI LISTE COALI = "+ String.valueOf(sumVotiCOali), 15));
-		document.add(addParagraph("NUM SEGGI = "+ String.valueOf(245), 15));
+		document.add(addParagraph("NUM SEGGI = "+ String.valueOf(numSeggi), 15));
 		document.add(addParagraph("QUOZIENETE ELETTORALE NAZ = "+ String.valueOf(quoziente), 15));
 		
 		if(elements.stream().map(Elemento::getSorteggio).filter(w->w).findAny().isPresent()) {
@@ -468,7 +511,6 @@ public class RipartoCamera extends AppoggioStampa{
 	private List<Elemento> ripartoTraListeInCoalizione(List<Elemento> ripartoColizioniNazionale, List<Coalizione> nazionali) throws DocumentException {
 
 		List<Elemento> ret = new ArrayList<>();
-		RipartoUtils utils = new RipartoUtils();		
 		
 		//mapping liste coalizoni in ELemento
 		nazionali.stream().filter(coal->coal.getPartecipaRipartoCoalizione().equals(PartecipaRiparto.SI.toString())).forEach(coal ->{
@@ -596,22 +638,21 @@ public class RipartoCamera extends AppoggioStampa{
 			
 			try {
 				log.info("GENERAZIONE PROSPETTO 5");
-				generaProspetto5(x.getKey().getDescrizione(), elements, quozEletCirc.getQuoziente(), x.getKey().getNumSeggi(), numVoti);
+				generaProspetto5(x.getKey().getDescrizione(), elements, quozEletCirc.getQuoziente(), x.getKey().getNumSeggi(), numVoti, 5);
 				log.info("FINE GENERAZIONE PROSPETTO 5");
 			} catch (DocumentException e) {
 				log.error("ERRORE GENERAZIONE PROSPETTO 5 CIRCOSCRIZIONE:" +x.getKey().getDescrizione());
 				e.printStackTrace();
 			}
 		});
-		mapCircListe = null;
 	}
 
-	private void generaProspetto5(String descCirc, List<Elemento> elements, Integer quoziente, Integer numSeggi, Integer numVoti) throws DocumentException {
+	private void generaProspetto5(String descCirc, List<Elemento> elements, Integer quoziente, Integer numSeggi, Integer numVoti, int prosp) throws DocumentException {
 		document.newPage();
 
 		document.setPageCount(pageCount.getAndIncrement());
 		
-		document.add(addParagraph("PROSPETTO 5", 15));
+		document.add(addParagraph("PROSPETTO " +prosp, 15));
 		
 		document.add(addParagraph("CIRCOSCRIZIONE = "+ descCirc, 15));
 		document.add(addParagraph("TOTALE VOTI VALIDI LISTE COALI = "+ String.valueOf(numVoti), 15));
@@ -678,8 +719,6 @@ public class RipartoCamera extends AppoggioStampa{
 	}
 	
 	private List<Prospetto6> confrontoCircoscrizionaleNazionale(List<Elemento> ripartoColizioniNazionale) throws DocumentException {
-		
-		List<Coalizione> elements = new ArrayList<>();
 		
 		List<Prospetto6> listProspetto6 = new ArrayList<>();
 		
@@ -826,10 +865,8 @@ public class RipartoCamera extends AppoggioStampa{
 					if(puoAssegnareSeggio(ecc)) {
 						Territorio terrEcc = ecc.getTerritorio();
 						
-						boolean assegnato = false;
-						
 						//cerco deficitaria nello stesso territorio
-						assegnato = assegnaSeggiDeficitaria(listaDeficitarie, ordineSottrazione, seggiDaAssegnare, ecc, terrEcc, false);
+						assegnaSeggiDeficitaria(listaDeficitarie, ordineSottrazione, seggiDaAssegnare, ecc, terrEcc, false);
 						
 					}
 					
@@ -897,6 +934,15 @@ public class RipartoCamera extends AppoggioStampa{
 		}
 		log.info("FINE GENERAZIONE PROSPETTO 8");
 		
+		
+		
+		log.info("GENERAZIONE PROSPETTO 9");
+		try {
+			generaProspetto9(listProspetto9);
+		} catch (DocumentException e1) {
+			log.error("ERROR GENERAZIONE PROSPETTO 9:{}", e1.getMessage());	
+		}
+		log.info("FINE GENERAZIONE PROSPETTO 9");
 	}
 
 	private boolean puoAssegnareSeggio(Elemento ecc) {
@@ -917,19 +963,23 @@ public class RipartoCamera extends AppoggioStampa{
 				seggiDaAssegnare.getAndDecrement();
 				
 				def.setRiceveSeggio(true);
-				eccedentaria.setCedeSeggio(true);
-				
 				def.setOrdineSottrazione(ordineSottrazione.get());
-				eccedentaria.setOrdineSottrazione(ordineSottrazione.getAndIncrement());
-				
 				def.setShift(isShift);
+				def.setSeggioCompensazione(1);
+				
+				eccedentaria.setCedeSeggio(true);
+				eccedentaria.setOrdineSottrazione(ordineSottrazione.getAndIncrement());
+				eccedentaria.setSeggioCompensazione(-1);
+				
 				assegnato = !assegnato;
+				
+				listProspetto9.add(new Prospetto9(eccedentaria, def));
 				break;
 			}
 		}//end loop deficitarie
 		return assegnato;
 	}
-
+	
 	private void generaProspetto8(List<Elemento> lista) throws DocumentException {
 
 		lista.sort(compareByDecimale(Ordinamento.ASC));
@@ -987,6 +1037,69 @@ public class RipartoCamera extends AppoggioStampa{
 		
 	}
 
+	private void generaProspetto9(List<Prospetto9> lista) throws DocumentException {
+
+		document.newPage();
+
+		document.setPageCount(pageCount.getAndIncrement());
+		
+		document.add(addParagraph("PROSPETTO 9", 15));
+		
+		document.add(Chunk.NEWLINE);
+		document.add(addParagraph("", 15));
+		
+		float[] width = {20,15,14,20,15,14,2};
+
+		PdfPTable table = new PdfPTable(width);
+		
+		table.setWidthPercentage(100);
+		
+		Arrays.asList("Eccedntaria", "Circoscrizione", "Decimali","Deficitaria", "Circoscrizione", "Decimali", "Shift")
+		.forEach(columnTitle -> {
+			PdfPCell header = new PdfPCell();
+			header.setBackgroundColor(BaseColor.LIGHT_GRAY);
+			header.setBorderWidth(2);
+			header.setPhrase(new Phrase(columnTitle));
+			table.addCell(header);
+		});	
+		
+		lista.forEach(e->{
+			PdfPCell cell = new PdfPCell();
+			cell.addElement(addParagraph(String.valueOf(e.getEccedntaria().getDescrizione()), 10));
+			PdfPCell cell2 = new PdfPCell();
+			cell2.addElement(addParagraph(String.valueOf(e.getEccedntaria().getTerritorio().getDescrizione()), 10));
+			PdfPCell cell12 = new PdfPCell();
+			cell12.addElement(addParagraph(String.valueOf(e.getEccedntaria().getQuoziente().getDecimale()), 10));
+			PdfPCell cell3 = new PdfPCell();
+			cell3.addElement(addParagraph(String.valueOf(e.getDeficitaria().getDescrizione()), 10));
+			PdfPCell cell4 = new PdfPCell();
+			cell4.addElement(addParagraph(String.valueOf(e.getDeficitaria().getTerritorio().getDescrizione()), 10));
+			PdfPCell cell5 = new PdfPCell();
+			cell5.addElement(addParagraph(String.valueOf(e.getDeficitaria().getQuoziente().getDecimale()), 10));
+			PdfPCell cell6 = new PdfPCell();
+			cell6.addElement(addParagraph(String.valueOf(e.getDeficitaria().isShift() ? "*":""), 10));
+			
+			table.addCell(cell);			
+			table.addCell(cell2);
+			table.addCell(cell12);
+			table.addCell(cell3);
+			table.addCell(cell4);
+			table.addCell(cell5);
+			table.addCell(cell6);
+		});
+		
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		
+		Paragraph p = new Paragraph();
+		p.add(table);
+		
+		document.add(p);
+		
+	}
+	
 	private Comparator<? super Elemento> compareByDecimale(Ordinamento ordinamento) {
 		switch (ordinamento) {
 		case DESC:

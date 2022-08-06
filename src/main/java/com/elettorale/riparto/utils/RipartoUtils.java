@@ -33,7 +33,21 @@ public class RipartoUtils {
 		private boolean cedeSeggio;
 		private boolean riceveSeggio;
 		private boolean shift;
+		private Integer seggioCompensazione;
 		
+		public Elemento(Elemento e) {
+			this.id = e.getId();
+			this.descrizione = e.getDescrizione();
+			this.cifra = e.getCifra();
+			this.resto = e.resto;
+			this.sorteggio = e.getSorteggio();
+			this.seggiQI = e.getSeggiQI();
+			this.seggiResti = e.getSeggiResti();
+			this.seggiDecimali = e.getSeggiDecimali();
+			this.idCoalizione = e.idCoalizione;
+			this.quoziente = new Quoziente(e.getQuoziente());
+			this.territorio = new Territorio(e.getTerritorio());
+		}
 		public Elemento(Integer id, String descrizione, Integer cifra, Integer resto, List<String> descrizioni, Integer idCoalizione) {
 			super();
 			this.id = id;
@@ -138,9 +152,14 @@ public class RipartoUtils {
 		public void setShift(boolean shift) {
 			this.shift = shift;
 		}
+		public Integer getSeggioCompensazione() {
+			return seggioCompensazione;
+		}
+		public void setSeggioCompensazione(Integer seggioCompensazione) {
+			this.seggioCompensazione = seggioCompensazione;
+		}
 		@Override
 		public String toString() {
-			// TODO Auto-generated method stub
 			return this.descrizione+" QI:"+this.seggiQI +" DEC: "+this.seggiDecimali;
 		}
 	}
@@ -159,6 +178,15 @@ public class RipartoUtils {
 			this.descrizione = descrizione;
 			this.setNumSeggi(numSeggi);
 			this.codEnte = codEnte;
+		}
+		
+		public Territorio(Territorio t) {
+			super();
+			this.id = t.getId();
+			this.tipoTerritorio = t.getTipoTerritorio();
+			this.descrizione = t.getDescrizione();
+			this.numSeggi = t.getNumSeggi();
+			this.codEnte = t.getCodEnte();
 		}
 		public Integer getId() {
 			return id;
@@ -220,6 +248,14 @@ public class RipartoUtils {
 		//decimale escluso i seggi interi(quoziente)
 		private BigDecimal decimale = BigDecimal.ZERO;
 		
+		public Quoziente(Quoziente q) {
+			this.quoziente = q.getQuoziente();
+			this.resto = q.getResto();
+			this.quozienteAttribuzione = q.getQuozienteAttribuzione();
+			this.decimale = q.getDecimale();
+		}
+		public Quoziente() {
+		}
 		public Integer getQuoziente() {
 			return quoziente;
 		}
@@ -361,6 +397,7 @@ public class RipartoUtils {
 			quoziente.setResto(dividend % divisor);
 		} catch (Exception e) {
 			// errore null pointer return quoziente null
+			e.printStackTrace();
 		}
 		
 		return quoziente;
@@ -394,24 +431,31 @@ public class RipartoUtils {
 	
 	public Quoziente assegnaseggiQIMassimiResti(List<Elemento> elements,
 			Integer numSeggiDaAssegnare, Integer totVoti, TipoOrdinamento tipoAssegnazione) {
-		Quoziente q = getQuozienteResto(totVoti, numSeggiDaAssegnare, null);
-		
-		sortCustom(elements, TipoOrdinamento.CIFRA);
-		
-		if(elements.size() == 1) {
-			elements.stream().findFirst().get().setSeggiQI(numSeggiDaAssegnare);
-		}else {
-			elements.forEach(e->{
-				Quoziente quoziente = getQuozienteResto(e.getCifra(), q.getQuoziente(), null);
-				
-				e.setSeggiQI(quoziente.getQuoziente());
-				e.setResto(quoziente.getResto());
-			});
+		try {
+			Quoziente q = getQuozienteResto(totVoti, numSeggiDaAssegnare, null);
+			
+			sortCustom(elements, TipoOrdinamento.CIFRA);
+			
+			if(elements.size() == 1) {
+				elements.stream().findFirst().get().setSeggiQI(numSeggiDaAssegnare);
+			}else {
+				elements.forEach(e->{
+					Quoziente quoziente = getQuozienteResto(e.getCifra(), q.getQuoziente(), null);
+					
+					e.setSeggiQI(quoziente.getQuoziente());
+					e.setResto(quoziente.getResto());
+				});
+			}
+			
+			int seggiRimanenti = elements.stream().mapToInt(Elemento::getSeggiQI).sum();
+			assegnaSeggi(elements, tipoAssegnazione, numSeggiDaAssegnare-seggiRimanenti);
+			return q;
+		} catch (Exception e2) {
+			e2.printStackTrace();
+			throw new RuntimeException();
 		}
 		
-		assegnaSeggi(elements, tipoAssegnazione, numSeggiDaAssegnare-elements.stream().mapToInt(Elemento::getSeggiQI).sum());
 		
-		return q;
 	}
 	
 	protected enum TipoOrdinamento{
