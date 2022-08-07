@@ -541,6 +541,8 @@ public class RipartoUtils {
 		private Integer diff;
 		
 		private Integer cifraNazionale;
+
+		private Territorio territorio;
 		
 		public Integer getId() {
 			return id;
@@ -583,6 +585,12 @@ public class RipartoUtils {
 		}
 		public void setCifraNazionale(Integer cifraNazionale) {
 			this.cifraNazionale = cifraNazionale;
+		}
+		public Territorio getTerritorio() {
+			return territorio;
+		}
+		public void setTerritorio(Territorio territorio) {
+			this.territorio = territorio;
 		}
 	}
 	

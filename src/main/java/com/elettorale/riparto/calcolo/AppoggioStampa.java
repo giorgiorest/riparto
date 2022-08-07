@@ -42,7 +42,7 @@ public class AppoggioStampa extends RipartoUtils {
 	private BigDecimal votiValidi10;
 	private BigDecimal votiValidi20;
 
-	public Integer getTotaleVotiValidi() {
+	private Integer getTotaleVotiValidi() {
 		return totaleVotiValidi;
 	}
 
@@ -649,4 +649,66 @@ public class AppoggioStampa extends RipartoUtils {
 		});
 	}
 
+	protected void generaProspetto17_18(List<Elemento> lista, int i) throws DocumentException {
+
+		document.newPage();
+
+		String descLista = lista.stream().map(Elemento::getDescrizione).distinct().findFirst().orElse("non trovata");//.orElseThrow(() -> new RuntimeException( "Descrizione lista NULL in genera prospetto 17" ));
+		document.add(addParagraph("PROSPETTO "+i, 15));
+		document.add(addParagraph(descLista, 13));
+
+		document.add(Chunk.NEWLINE);
+		document.add(addParagraph("", 15));
+
+		float[] width = { 5, 20, 5, 30, 20, 10, 10 };
+
+		PdfPTable table = new PdfPTable(width);
+
+		table.setWidthPercentage(100);
+
+		Arrays.asList("Numero","Circoscrizione", "Numero", "Collegio", "Decimali", "QI", "Seggi decimali").forEach(columnTitle -> {
+			PdfPCell header = new PdfPCell();
+			header.setBackgroundColor(BaseColor.LIGHT_GRAY);
+			header.setBorderWidth(2);
+			header.setPhrase(new Phrase(columnTitle));
+			table.addCell(header);
+		});
+		
+		lista.forEach(e -> {
+			PdfPCell cell = new PdfPCell();
+			cell.addElement(addParagraph(String.valueOf(e.getTerritorio().getPadre().getCodEnte()), 10));
+			PdfPCell cell2 = new PdfPCell();
+			cell2.addElement(addParagraph(String.valueOf(e.getTerritorio().getPadre().getDescrizione()), 10));
+			PdfPCell cell12 = new PdfPCell();
+			cell12.addElement(addParagraph(String.valueOf(e.getTerritorio().getCodEnte()), 10));
+			PdfPCell cell3 = new PdfPCell();
+			cell3.addElement(addParagraph(String.valueOf(e.getTerritorio().getDescrizione()), 10));
+			PdfPCell cell4 = new PdfPCell();
+			cell4.addElement(addParagraph(String.valueOf(e.getQuoziente().getDecimale()), 10));
+			PdfPCell cell5 = new PdfPCell();
+			cell5.addElement(addParagraph(String.valueOf(e.getSeggiQI()), 10));
+			PdfPCell cell6 = new PdfPCell();
+			cell6.addElement(addParagraph(String.valueOf(e.getSeggiDecimali()), 10));
+
+			table.addCell(cell);
+			table.addCell(cell2);
+			table.addCell(cell12);
+			table.addCell(cell3);
+			table.addCell(cell4);
+			table.addCell(cell5);
+			table.addCell(cell6);
+		});
+
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+
+		Paragraph p = new Paragraph();
+		p.add(table);
+
+		document.add(p);
+
+		log.info("generato PROSPETTO "+i);
+	}
 }
