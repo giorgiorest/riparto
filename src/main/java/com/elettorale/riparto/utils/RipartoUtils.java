@@ -2,11 +2,14 @@ package com.elettorale.riparto.utils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
 import com.elettorale.riparto.dto.General;
+import com.elettorale.riparto.utils.RipartoUtils.Elemento;
 
 public class RipartoUtils {
 
@@ -164,7 +167,7 @@ public class RipartoUtils {
 		}
 	}
 
-	public class Territorio{
+	protected class Territorio{
 		private Integer id;
 		private String descrizione;
 		private TipoTerritorio tipoTerritorio;
@@ -288,7 +291,7 @@ public class RipartoUtils {
 		
 	}
 	
-	public List<Elemento> sort(List<Elemento> lista, TipoOrdinamento tipoOrdinamento, Ordinamento ordinamento) {
+	protected List<Elemento> sort(List<Elemento> lista, TipoOrdinamento tipoOrdinamento, Ordinamento ordinamento) {
 		
 		switch (tipoOrdinamento) {
 		case RESTI:
@@ -322,7 +325,7 @@ public class RipartoUtils {
 		return lista;
 	}
 
-	public List<Elemento> sortCustom(List<Elemento> lista, TipoOrdinamento tipoOrdinamento) {
+	protected List<Elemento> sortCustom(List<Elemento> lista, TipoOrdinamento tipoOrdinamento) {
 
 		AtomicBoolean parita = new AtomicBoolean();
 		
@@ -367,7 +370,7 @@ public class RipartoUtils {
 		return lista;
 	}
 	
-	public Quoziente getQuoziente(Integer dividend, Integer divisor, Quoziente quoziente) {
+	protected Quoziente getQuoziente(Integer dividend, Integer divisor, Quoziente quoziente) {
 		try {
 			if(Objects.isNull(quoziente)) {
 				quoziente = new Quoziente();
@@ -386,11 +389,11 @@ public class RipartoUtils {
 		return 	quoziente;
 	}
 
-	public BigDecimal truncateDecimal(BigDecimal value, int digit) {
+	protected BigDecimal truncateDecimal(BigDecimal value, int digit) {
 		return value.setScale(digit, RoundingMode.DOWN);
 	}
 	
-	public Quoziente getQuozienteResto(Integer dividend, Integer divisor, Quoziente quoziente) {
+	protected Quoziente getQuozienteResto(Integer dividend, Integer divisor, Quoziente quoziente) {
 		
 		try {
 			quoziente = this.getQuoziente(dividend, divisor, quoziente);
@@ -403,7 +406,7 @@ public class RipartoUtils {
 		return quoziente;
 	}
 	
-	public List<Elemento> assegnaSeggi(List<Elemento> elements, TipoOrdinamento tipoOrdinamento, Integer numSeggi){
+	protected List<Elemento> assegnaSeggi(List<Elemento> elements, TipoOrdinamento tipoOrdinamento, Integer numSeggi){
 		
 		sortCustom(elements, tipoOrdinamento);
 		boolean fineGiro = false;
@@ -429,7 +432,7 @@ public class RipartoUtils {
 		return elements;
 	}
 	
-	public Quoziente assegnaseggiQIMassimiResti(List<Elemento> elements,
+	protected Quoziente assegnaseggiQIMassimiResti(List<Elemento> elements,
 			Integer numSeggiDaAssegnare, Integer totVoti, TipoOrdinamento tipoAssegnazione) {
 		try {
 			Quoziente q = getQuozienteResto(totVoti, numSeggiDaAssegnare, null);
@@ -458,6 +461,30 @@ public class RipartoUtils {
 		
 	}
 	
+	protected Comparator<? super Elemento> compareByDecimale(Ordinamento ordinamento) {
+		switch (ordinamento) {
+		case DESC:
+			return (le, re) -> re.getQuoziente().getDecimale().compareTo(le.getQuoziente().getDecimale());
+		case ASC:
+			return (le, re) -> le.getQuoziente().getDecimale().compareTo(re.getQuoziente().getDecimale());
+		default:
+			//default ordina ASC
+			return (le, re) -> le.getQuoziente().getDecimale().compareTo(re.getQuoziente().getDecimale());
+		}
+	}
+	
+	protected Predicate<Elemento> partecipaCifraInCoalizione() {
+		return l->l.getPartecipaInCoalizione().equals(PartecipaRiparto.SI.toString());
+	}
+
+	protected Predicate<Elemento> partecipaRipartoLista() {
+		return l->l.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString());
+	}
+	
+	protected boolean puoAssegnareSeggio(Elemento ecc) {
+		return ecc.getSeggiDecimali().compareTo(0) > 0 && !ecc.isCedeSeggio();
+	}
+	
 	protected enum TipoOrdinamento{
 		RESTI,
 		CIFRA,
@@ -476,7 +503,28 @@ public class RipartoUtils {
 		COLLEGIO_UNI;
 	}
 	
-	public class Prospetto6{
+	protected enum PartecipaRiparto{
+		SI,NO;
+	}
+	
+	protected enum Sbarramento{
+		UNO(1),
+		TRE(3),
+		DIECI(10),
+		VENTI(20);
+		Sbarramento(int i) {
+			this.value = i;
+		}
+
+		private Integer value;
+
+		public Integer getValue() {
+			return value;
+		}
+
+	}
+	
+	public class Confronto{
 		private Integer id;
 		private String descLista;
 		private Integer seggiQICirc;
@@ -530,7 +578,7 @@ public class RipartoUtils {
 		}
 	}
 	
-	public List<Prospetto6> sortByDiffCifra(List<Prospetto6> lista){
+	protected List<Confronto> sortByDiffCifra(List<Confronto> lista){
 		
 		lista.sort((e1,e2) -> {
 			//se seggi eccedntari uguali, ordino per maggior cifra
@@ -546,4 +594,6 @@ public class RipartoUtils {
 		return lista;
 		
 	}
+	
+	
 }
