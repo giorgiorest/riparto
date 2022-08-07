@@ -41,13 +41,17 @@ public class RipartoCamera extends AppoggioStampa{
 	private Map<Territorio, List<Elemento>> mapCircListeElemento11 = new HashMap<>();
 	//----------------CIRCOSCRIZIONE----------------------//
 	//lista eccedntarie(key idAggregato, value liste)
-	private Map<Integer, List<Elemento>> mapEccedentarieListe = new HashMap<>();
+	private Map<Integer, List<Elemento>> mapEccedentarieListeCirc = new HashMap<>();
 	//mappa deficitarie(key idAggregato, value liste)
-	private Map<Integer, List<Elemento>> mapDeficitarieListe = new HashMap<>();
+	private Map<Integer, List<Elemento>> mapDeficitarieListeCirc = new HashMap<>();
 	//----------------CIRCOSCRIZIONE----------------------//
 	
 	//----------------COLLEGIO PLURI----------------------//
 	private Map<Territorio, List<Elemento>> mapPluriListeElemento = new HashMap<>();
+	//lista eccedntarie(key idAggregato, value liste)
+	private Map<Integer, List<Elemento>> mapEccedentarieListePluri = new HashMap<>();
+	//mappa deficitarie(key idAggregato, value liste)
+	private Map<Integer, List<Elemento>> mapDeficitarieListePluri = new HashMap<>();
 	//----------------COLLEGIO PLURI----------------------//
 	
 	
@@ -104,6 +108,12 @@ public class RipartoCamera extends AppoggioStampa{
 		//PROSPETTO 15 riparto tra liste in collegio plurinominale
 		ripartoListeCollegioPluri();
 		
+		//PROSPETTO 16
+		confrontoCircoscrizionalePluri();
+		
+		//PROSPETTO 17-18-19 -> Compensazione Eccedentarie Deficitarie Livello pluri liste
+		compensazioneCollegioPluriListe();
+		
 		document.close();
 		
 		log.info("GENERAZIONE DOCUMENTO RIPARTO");
@@ -147,7 +157,9 @@ public class RipartoCamera extends AppoggioStampa{
 			
 			Base base = e.getValue().stream().findFirst().orElseThrow(() -> new RuntimeException("no value found for base in crea mappa collegio pluri"));
 			
-			Territorio ente = new Territorio(e.getKey(), TipoTerritorio.COLLEGIO_PLURI, base.getDescCircoscrizione(), base.getNumSeggi(), base.getCodEnte());
+			Territorio ente = new Territorio(e.getKey(), TipoTerritorio.COLLEGIO_PLURI, base.getDescCollegioPluri(), base.getNumSeggi(), base.getCodEnte());
+			Territorio padre = new Territorio(base.getIdCircoscrizione(), TipoTerritorio.CIRCOSCRIZIONE, base.getDescCircoscrizione(), null, base.getCodEnte());
+			ente.setPadre(padre);
 			
 			List<Elemento> listeCollegioPluri = e.getValue().stream().map(l->{
 				Elemento ele = null;
@@ -541,7 +553,7 @@ public class RipartoCamera extends AppoggioStampa{
 			}
 		});
 		
-		generaProspetto6_11(listProspetto6, 6);
+		generaProspetto6_11_16(listProspetto6, 6, null);
 		
 		return listProspetto6;
 	}
@@ -743,16 +755,16 @@ public class RipartoCamera extends AppoggioStampa{
 				//popolo mappa eccedentarie deficitarie
 				if(prosp.getDiff().compareTo(0) > 0) {
 					//ECCENTARIE
-					mapEccedentarieListe.put(lista.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(() -> new RuntimeException( "no value found per eccedentarie" )), lista);
+					mapEccedentarieListeCirc.put(lista.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(() -> new RuntimeException( "no value found per eccedentarie" )), lista);
 				}else if(prosp.getDiff().compareTo(0) < 0){
 					//DEFICITARIE
-					mapDeficitarieListe.put(lista.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(() -> new RuntimeException( "no value found per deficitarie" )), lista);
+					mapDeficitarieListeCirc.put(lista.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(() -> new RuntimeException( "no value found per deficitarie" )), lista);
 				}
 				
 			}
 		});
 		
-		generaProspetto6_11(listProspetto6, 11);
+		generaProspetto6_11_16(listProspetto6, 11, null);
 		
 		return listProspetto6;
 	}
@@ -764,12 +776,12 @@ public class RipartoCamera extends AppoggioStampa{
 		eccedntarieNaz = sortByDiffCifra(eccedntarieNaz);
 		
 		eccedntarieNaz.forEach(e->{
-			List<Elemento> elements = mapEccedentarieListe.get(e.getId());
+			List<Elemento> elements = mapEccedentarieListeCirc.get(e.getId());
 			
 			elements.sort(compareByDecimale(Ordinamento.DESC));
 		});
 		
-		List<Elemento> listaDeficitarie = mapDeficitarieListe.values().stream().flatMap(List::stream).collect(Collectors.toList());
+		List<Elemento> listaDeficitarie = mapDeficitarieListeCirc.values().stream().flatMap(List::stream).collect(Collectors.toList());
 		
 		AtomicInteger ordineSottrazione = new AtomicInteger(1);
 		
@@ -781,7 +793,7 @@ public class RipartoCamera extends AppoggioStampa{
 			
 			AtomicInteger seggiDaAssegnare = new AtomicInteger(e.getDiff());
 			
-			List<Elemento> listeEccedntarie = mapEccedentarieListe.get(e.getId());
+			List<Elemento> listeEccedntarie = mapEccedentarieListeCirc.get(e.getId());
 			
 			while (seggiDaAssegnare.get() > 0 || !isSorteggio) {
 				
@@ -848,7 +860,7 @@ public class RipartoCamera extends AppoggioStampa{
 			}//end while
 		});
 		
-		mapEccedentarieListe.entrySet().forEach(e->{
+		mapEccedentarieListeCirc.entrySet().forEach(e->{
 			try {
 				generaProspetto7_12(e.getValue(), 12);
 			} catch (DocumentException e1) {
@@ -856,7 +868,7 @@ public class RipartoCamera extends AppoggioStampa{
 				}
 		});
 		
-		List<Elemento> deficitarie = mapDeficitarieListe.values().stream().flatMap(List::stream).collect(Collectors.toList());
+		List<Elemento> deficitarie = mapDeficitarieListeCirc.values().stream().flatMap(List::stream).collect(Collectors.toList());
 		
 		deficitarie.sort(compareByDecimale(Ordinamento.DESC));
 		
@@ -873,6 +885,177 @@ public class RipartoCamera extends AppoggioStampa{
 		}
 	}
 
+	private Map<Territorio, List<Confronto>> confrontoCircoscrizionalePluri() throws DocumentException {
+		
+		Map<Territorio, List<Confronto>> mapCircoscrizioneConfronto = new HashMap<>();
+		
+		//loop per ogni circoscrizione
+		mapCircListeElemento11.entrySet().forEach(e->{
+			
+			List<Confronto> listProspetto16 = new ArrayList<>();
+			
+			e.getValue().stream().forEach(listaCirc->{
+				
+				List<Territorio> pluri = mapPluriListeElemento.keySet().stream().filter(t->t.getPadre().getId().compareTo(e.getKey().getId()) ==0).collect(Collectors.toList());
+				
+				List<Elemento> listePluri = new ArrayList<>();;
+				
+				pluri.forEach(t->{
+					listePluri.addAll(mapPluriListeElemento.get(t).stream().filter(l->l.getId().compareTo(listaCirc.getId()) == 0).collect(Collectors.toList()));
+				});
+				
+				Confronto prosp = new Confronto();
+				
+				Integer totSeggiQI = listePluri.stream().mapToInt(Elemento::getSeggiQI).sum();
+
+				Integer totSeggiDecimali = listePluri.stream().mapToInt(Elemento::getSeggiDecimali).sum();
+				
+				prosp.setId(listaCirc.getId());
+				prosp.setDescLista(listaCirc.getDescrizione());
+				prosp.setSeggiQICirc(totSeggiQI);
+				prosp.setSeggiTotCirc(totSeggiQI+totSeggiDecimali);
+				prosp.setSeggiNazionali(listaCirc.getSeggiQI()+listaCirc.getSeggiDecimali()+listaCirc.getSeggioCompensazione());
+				prosp.setDiff(prosp.getSeggiTotCirc()-prosp.getSeggiNazionali());			
+				
+				prosp.setCifraNazionale(listaCirc.getCifra());
+				
+				listProspetto16.add(prosp);
+				
+				//popolo mappa eccedentarie deficitarie
+				if(prosp.getDiff().compareTo(0) > 0) {
+					//ECCENTARIE
+					mapEccedentarieListePluri.put(listePluri.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(() -> new RuntimeException( "no value found per eccedentarie pluri" )), listePluri);
+				}else if(prosp.getDiff().compareTo(0) < 0){
+					//DEFICITARIE
+					mapDeficitarieListePluri.put(listePluri.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(() -> new RuntimeException( "no value found per deficitarie pluri" )), listePluri);
+				}
+				
+			});
+			
+			try {
+				generaProspetto6_11_16(listProspetto16, 16, e.getKey().getDescrizione());
+			} catch (DocumentException e1) {
+				e1.printStackTrace();
+			}
+			
+		});
+		
+		return mapCircoscrizioneConfronto;
+	}
 	
-	
+	private void compensazioneCollegioPluriListe() throws DocumentException {
+
+//		List<Confronto> eccedntarieNaz = listProspetto11.stream().filter(l->l.getDiff().compareTo(0)>0).collect(Collectors.toList());
+//		
+//		eccedntarieNaz = sortByDiffCifra(eccedntarieNaz);
+//		
+//		eccedntarieNaz.forEach(e->{
+//			List<Elemento> elements = mapEccedentarieListeCirc.get(e.getId());
+//			
+//			elements.sort(compareByDecimale(Ordinamento.DESC));
+//		});
+//		
+//		List<Elemento> listaDeficitarie = mapDeficitarieListeCirc.values().stream().flatMap(List::stream).collect(Collectors.toList());
+//		
+//		AtomicInteger ordineSottrazione = new AtomicInteger(1);
+//		
+//		eccedntarieNaz.forEach(e->{
+//			
+//			log.info("Lista ECCEDNTARIA: {}", e.getDescLista());
+//			
+//			boolean isSorteggio = false;
+//			
+//			AtomicInteger seggiDaAssegnare = new AtomicInteger(e.getDiff());
+//			
+//			List<Elemento> listeEccedntarie = mapEccedentarieListeCirc.get(e.getId());
+//			
+//			while (seggiDaAssegnare.get() > 0 || !isSorteggio) {
+//				
+//				listeEccedntarie.sort(compareByDecimale(Ordinamento.DESC));
+//				
+//				List<Elemento> eccedntarie = listeEccedntarie.stream().filter(l->l.getId().compareTo(e.getId()) == 0).collect(Collectors.toList());
+//				
+//				//ciclo eccedntarie e vedo se posso dare nella stessa ente
+//				for(Elemento ecc : eccedntarie) {
+//					//se ottenuto seggi con i decimali può cedere e non ha già ceduto il seggio decimale
+//					log.info("Eccedentaria {}", ecc.getTerritorio().getDescrizione());
+//
+//					if(seggiDaAssegnare.get() == 0) {
+//						return;
+//					}
+//					
+//					if(puoAssegnareSeggio(ecc)) {
+//						Territorio terrEcc = ecc.getTerritorio();
+//						
+//						//cerco deficitaria nello stesso territorio
+//						assegnaSeggiDeficitaria(listaDeficitarie, ordineSottrazione, seggiDaAssegnare, ecc, terrEcc, false, TipoTerritorio.CIRCOSCRIZIONE);
+//						
+//					}
+//					
+//					//se ho assegnato tutti i seggi esco dal loop
+//					if(seggiDaAssegnare.get() == 0) {
+//						break;
+//					}
+//				}//end loop eccedentarie
+//				
+//				//SHIFT cerco in altre circoscrizioni
+//				for(Elemento ecc : eccedntarie) {
+//					//se ottenuto seggi con i decimali può cedere e non ha già ceduto il seggio decimale
+//					log.info("Eccedentaria SHIFT {}", ecc.getTerritorio().getDescrizione());
+//
+//					if(seggiDaAssegnare.get() == 0) {
+//						return;
+//					}
+//					
+//					if(puoAssegnareSeggio(ecc)) {
+//						Territorio terrEcc = ecc.getTerritorio();
+//						
+//						boolean assegnato = false;
+//						
+//						//CASISTICA SHIFT
+//						//cerco deficitaria in altro territorio
+//						if(!assegnato) {
+//							log.info("SHIFT");
+//							assegnato = assegnaSeggiDeficitaria(listaDeficitarie, ordineSottrazione, seggiDaAssegnare, ecc, terrEcc, true, TipoTerritorio.CIRCOSCRIZIONE);
+//
+//							if(!assegnato) {
+//								log.info("CASO NON GESTITO!!!!!!!!!!!!!!!!!!!!!");
+//							}
+//							break;
+//						}
+//					}
+//					
+//					//se ho assegnato tutti i seggi esco dal loop
+//					if(seggiDaAssegnare.get() == 0) {
+//						break;
+//					}
+//				}//end loop eccedentarie
+//				
+//			}//end while
+//		});
+//		
+//		mapEccedentarieListeCirc.entrySet().forEach(e->{
+//			try {
+//				generaProspetto7_12(e.getValue(), 12);
+//			} catch (DocumentException e1) {
+//				log.error("ERROR GENERAZIONE PROSPETTO 12:{}", e1.getMessage());			
+//				}
+//		});
+//		
+//		List<Elemento> deficitarie = mapDeficitarieListeCirc.values().stream().flatMap(List::stream).collect(Collectors.toList());
+//		
+//		deficitarie.sort(compareByDecimale(Ordinamento.DESC));
+//		
+//		try {
+//			generaProspetto8_13(deficitarie, 13);
+//		} catch (DocumentException e1) {
+//			log.error("ERROR GENERAZIONE PROSPETTO 12:{}", e1.getMessage());	
+//		}
+//		
+//		try {
+//			generaProspetto9_14(listProspetto14, 14);
+//		} catch (DocumentException e1) {
+//			log.error("ERROR GENERAZIONE PROSPETTO 14:{}", e1.getMessage());	
+//		}
+	}
 }

@@ -35,7 +35,7 @@ public class RipartoUtils {
 		private boolean cedeSeggio;
 		private boolean riceveSeggio;
 		private boolean shift;
-		private Integer seggioCompensazione;
+		private Integer seggioCompensazione = 0;
 		
 		public Elemento(Elemento e) {
 			this.id = e.getId();
@@ -172,6 +172,7 @@ public class RipartoUtils {
 		private TipoTerritorio tipoTerritorio;
 		private Integer numSeggi;
 		private Integer codEnte;
+		private Territorio padre;
 		
 		public Territorio(Integer id, TipoTerritorio tipoTerritorio, String descrizione, Integer numSeggi, Integer codEnte) {
 			super();
@@ -225,6 +226,14 @@ public class RipartoUtils {
 			return this.descrizione;
 		}
 		
+		public Territorio getPadre() {
+			return padre;
+		}
+
+		public void setPadre(Territorio padre) {
+			this.padre = padre;
+		}
+
 		@Override
 		public boolean equals(Object obj) {
 			boolean ret = false;

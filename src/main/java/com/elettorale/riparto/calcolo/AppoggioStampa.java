@@ -349,12 +349,15 @@ public class AppoggioStampa extends RipartoUtils {
 		log.info("generato PROSPETTO "+prosp);
 	}
 
-	protected void generaProspetto6_11(List<Confronto> listProspetto6, int prosp) throws DocumentException {
+	protected void generaProspetto6_11_16(List<Confronto> listProspetto6, int prosp, String ente) throws DocumentException {
 
 		document.newPage();
 
 		document.add(addParagraph("PROSPETTO "+prosp, 15));
 
+		if(ente != null) {
+			document.add(addParagraph("CIRCOSCRIZIONE "+ente, 13));
+		}
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 15));
 
