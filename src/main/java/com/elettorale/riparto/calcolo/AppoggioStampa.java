@@ -275,7 +275,7 @@ public class AppoggioStampa extends RipartoUtils {
 		log.info("generato PROSPETTO 3");
 	}
 
-	protected void generaProspetto5_10(String descCirc, List<Elemento> elements, Integer quoziente, Integer numSeggi,
+	protected void generaProspetto5_10_15(String descCirc, List<Elemento> elements, Integer quoziente, Integer numSeggi,
 			Integer numVoti, int prosp) throws DocumentException {
 		document.newPage();
 

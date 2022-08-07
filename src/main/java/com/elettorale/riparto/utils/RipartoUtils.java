@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import com.elettorale.riparto.dto.General;
-import com.elettorale.riparto.utils.RipartoUtils.Elemento;
 
 public class RipartoUtils {
 

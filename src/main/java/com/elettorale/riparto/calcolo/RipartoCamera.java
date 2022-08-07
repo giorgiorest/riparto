@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -45,6 +46,10 @@ public class RipartoCamera extends AppoggioStampa{
 	private Map<Integer, List<Elemento>> mapDeficitarieListe = new HashMap<>();
 	//----------------CIRCOSCRIZIONE----------------------//
 	
+	//----------------COLLEGIO PLURI----------------------//
+	private Map<Territorio, List<Elemento>> mapPluriListeElemento = new HashMap<>();
+	//----------------COLLEGIO PLURI----------------------//
+	
 	
 	private List<Prospetto9> listProspetto9 = new ArrayList<>();
 	private List<Prospetto9> listProspetto14 = new ArrayList<>();
@@ -67,6 +72,8 @@ public class RipartoCamera extends AppoggioStampa{
 
 		document.open();
 
+		//TODO gestione blocco da riparto
+		
 		//PROSPETTO 1
 		List<Coalizione> nazionali = calcolaCifraNazionale();
 		
@@ -93,11 +100,66 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		//PROSPETTO 12-13-14 -> Compensazione Eccedentarie Deficitarie Livello circoscrizione liste
 		compensazioneCircoscrizionaleListe(listProspetto11);
+		
+		//PROSPETTO 15 riparto tra liste in collegio plurinominale
+		ripartoListeCollegioPluri();
+		
 		document.close();
 		
 		log.info("GENERAZIONE DOCUMENTO RIPARTO");
 		
 		return path;
+	}
+
+	private void ripartoListeCollegioPluri() {
+		
+		fillMappaCollegioPluriListeAmmesse();
+		
+		mapPluriListeElemento.entrySet().forEach(m->{
+
+			Integer numVoti = m.getValue().stream().mapToInt(Elemento::getCifra).sum();
+			
+			Quoziente quozEletCirc = getQuoziente(numVoti, m.getKey().getNumSeggi(), null);
+			
+			m.getValue().forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null)));
+			
+			assegnaseggiQIMassimiResti(m.getValue(), m.getKey().getNumSeggi(), numVoti, TipoOrdinamento.DECIMALI);
+			
+			try {
+				generaProspetto5_10_15(m.getKey().getDescrizione(), m.getValue(), quozEletCirc.getQuoziente(), m.getKey().getNumSeggi(), numVoti, 15);
+			} catch (DocumentException e) {
+				log.error("ERRORE GENERAZIONE PROSPETTO 15 CIRCOSCRIZIONE:" +m.getKey().getDescrizione());
+				e.printStackTrace();
+			}
+		});
+		
+	}
+
+	private void fillMappaCollegioPluriListeAmmesse() {
+		//recupero id aggregato delle liste che partecipano al riparto
+		Set<Integer> idsPartecipanoRiparto = mapCircListe.values().stream().flatMap(List::stream)
+				.collect(Collectors.toList()).stream().map(c -> c.getListe()).collect(Collectors.toList()).stream()
+				.flatMap(List::stream).filter(o -> o.getPartecipaRipartoLista().equals(PartecipaRiparto.SI.toString()))
+				.map(Elemento::getId).collect(Collectors.toSet());
+
+		//fill mappa chiave territorio, value liste
+		list.stream().collect(Collectors.groupingBy(Base::getIdCollegioPluri)).entrySet().forEach(e->{
+			
+			Base base = e.getValue().stream().findFirst().orElseThrow(() -> new RuntimeException("no value found for base in crea mappa collegio pluri"));
+			
+			Territorio ente = new Territorio(e.getKey(), TipoTerritorio.COLLEGIO_PLURI, base.getDescCircoscrizione(), base.getNumSeggi(), base.getCodEnte());
+			
+			List<Elemento> listeCollegioPluri = e.getValue().stream().map(l->{
+				Elemento ele = null;
+				if(idsPartecipanoRiparto.contains(l.getIdAggregatoRiparto())) {
+					ele = new Elemento(l.getIdAggregatoRiparto(), l.getDescLista(), l.getVotiLista(), null, null, l.getCoterCoali());
+					ele.setTerritorio(ente);
+				}
+				return ele;
+			}).filter(o->o!= null).collect(Collectors.toList());
+			
+			mapPluriListeElemento.put(ente, listeCollegioPluri);
+		});
 	}
 
 	private void ripartoSeggiCoalizioniPostCompensazione(List<Confronto> listProspetto6) {
@@ -142,7 +204,7 @@ public class RipartoCamera extends AppoggioStampa{
 				listeInCoalizioneAccumulator.addAll(listeInCoalizione);
 				
 				try {
-					generaProspetto5_10(ente.getDescrizione(), listeInCoalizione, q.getQuoziente(), numSeggi, numVoti, 10);
+					generaProspetto5_10_15(ente.getDescrizione(), listeInCoalizione, q.getQuoziente(), numSeggi, numVoti, 10);
 				} catch (DocumentException e1) {
 					e1.printStackTrace();
 				}
@@ -245,7 +307,6 @@ public class RipartoCamera extends AppoggioStampa{
 	}
 
 	private void creazioneMappaLivelloCircoscrizione(List<Coalizione> nazionaliCoaliListe) {
-		
 		
 		//Prendo solo le lste che hanno superato lo sbarramento
 		List<Coalizione> listeAmmesse = nazionaliCoaliListe.stream()
@@ -429,7 +490,7 @@ public class RipartoCamera extends AppoggioStampa{
 			mapCircListeElemento.put(x.getKey(), elements);
 			
 			try {
-				generaProspetto5_10(x.getKey().getDescrizione(), elements, quozEletCirc.getQuoziente(), x.getKey().getNumSeggi(), numVoti, 5);
+				generaProspetto5_10_15(x.getKey().getDescrizione(), elements, quozEletCirc.getQuoziente(), x.getKey().getNumSeggi(), numVoti, 5);
 			} catch (DocumentException e) {
 				log.error("ERRORE GENERAZIONE PROSPETTO 5 CIRCOSCRIZIONE:" +x.getKey().getDescrizione());
 				e.printStackTrace();
