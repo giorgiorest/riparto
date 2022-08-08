@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class RipartoCamera extends AppoggioStampa{
 	Logger log = LoggerFactory.getLogger(RipartoCamera.class);
 	
 	private List<Base> list;
+	private List<Base> listCandidati;
 	private Map<Territorio, List<Coalizione>> mapCircListe = new HashMap<>();
 	private Map<Territorio, List<Elemento>> mapCircListeElemento = new HashMap<>();
 	
@@ -49,17 +51,19 @@ public class RipartoCamera extends AppoggioStampa{
 	//----------------COLLEGIO PLURI----------------------//
 	private Map<Territorio, List<Elemento>> mapPluriListeElemento = new HashMap<>();
 	//lista eccedntarie(key idAggregato, value liste)
-	private Map<Integer, List<Elemento>> mapEccedentarieListePluri = new HashMap<>();
+	private Map<ChiavePluri, List<Elemento>> mapEccedentarieListePluri = new HashMap<>();
 	//mappa deficitarie(key idAggregato, value liste)
 	private Map<Integer, List<Elemento>> mapDeficitarieListePluri = new HashMap<>();
 	//----------------COLLEGIO PLURI----------------------//
 	
+	private BloccoRiparto bloccoRiparto = null;
 	
 	private List<Prospetto9> listProspetto9 = new ArrayList<>();
 	private List<Prospetto9> listProspetto14 = new ArrayList<>();
 	
-	public RipartoCamera(List<Base> list) {
+	public RipartoCamera(List<Base> list, List<Base> listCandidati) {
 		this.list = list;
+		this.listCandidati = listCandidati;
 	}
 
 	public String eseguiRiparto(boolean isLocal, String dataElezione) throws FileNotFoundException, DocumentException {
@@ -78,47 +82,88 @@ public class RipartoCamera extends AppoggioStampa{
 
 		//TODO gestione blocco da riparto
 		
+		//Proclama Eletto
+		proclamaEletto();
+		
 		//PROSPETTO 1
 		List<Coalizione> nazionali = calcolaCifraNazionale();
 		
 		//PROSPETTO 2
 		List<Elemento> ripartoColizioniNazionale = ripartoCoalizioniListeNazionali(nazionali, dataElezione);
 		
-		//PROSPETTO 3
-		List<Elemento> ripartoListeInColizioniNazionale = ripartoTraListeInCoalizione(ripartoColizioniNazionale, nazionali);
-		
-		//PROSPETTO 5
-		ripartoListeCircoscrizione(nazionali);
-		
-		//PROSPETTO 6 -> Confronto tra livello circ e naz
-		List<Confronto> listProspetto6 = confrontoCircoscrizionaleNazionaleCoalizioni(ripartoColizioniNazionale);
-		
-		//PROSPETTO 7-8-9 -> Compensazione Eccedentarie Deficitarie Livello circoscrizione coali
-		compensazioneCircoscrizionaleCoalizioni(listProspetto6);
-		
-		//PROSPETTO 10 -> ripartizione seggi tra coalizioni in circosricioni post compensazione
-		ripartoSeggiCoalizioniPostCompensazione(listProspetto6);
-		
-		//PROSPETTO 11 -> Confronto tra livello circ e naz
-		List<Confronto> listProspetto11 = confrontoCircoscrizionaleNazionaleListe(ripartoListeInColizioniNazionale);
-		
-		//PROSPETTO 12-13-14 -> Compensazione Eccedentarie Deficitarie Livello circoscrizione liste
-		compensazioneCircoscrizionaleListe(listProspetto11);
-		
-		//PROSPETTO 15 riparto tra liste in collegio plurinominale
-		ripartoListeCollegioPluri();
-		
-		//PROSPETTO 16
-		Map<Territorio, List<Confronto>> mapConfronto =confrontoCircoscrizionalePluri();
-		
-		//PROSPETTO 17-18-19 -> Compensazione Eccedentarie Deficitarie Livello pluri liste
-		compensazioneCollegioPluriListe(mapConfronto);
+		if(Objects.isNull(bloccoRiparto)) {
+			
+			//PROSPETTO 3
+			List<Elemento> ripartoListeInColizioniNazionale = ripartoTraListeInCoalizione(ripartoColizioniNazionale, nazionali);
+			
+			//PROSPETTO 5
+			ripartoListeCircoscrizione(nazionali);
+			
+			//PROSPETTO 6 -> Confronto tra livello circ e naz
+			List<Confronto> listProspetto6 = confrontoCircoscrizionaleNazionaleCoalizioni(ripartoColizioniNazionale);
+			
+			//PROSPETTO 7-8-9 -> Compensazione Eccedentarie Deficitarie Livello circoscrizione coali
+			compensazioneCircoscrizionaleCoalizioni(listProspetto6);
+			
+			//PROSPETTO 10 -> ripartizione seggi tra coalizioni in circosricioni post compensazione
+			ripartoSeggiCoalizioniPostCompensazione(listProspetto6);
+			
+			//PROSPETTO 11 -> Confronto tra livello circ e naz
+			List<Confronto> listProspetto11 = confrontoCircoscrizionaleNazionaleListe(ripartoListeInColizioniNazionale);
+			
+			//PROSPETTO 12-13-14 -> Compensazione Eccedentarie Deficitarie Livello circoscrizione liste
+			compensazioneCircoscrizionaleListe(listProspetto11);
+			
+			//PROSPETTO 15 riparto tra liste in collegio plurinominale
+			ripartoListeCollegioPluri();
+			
+			//PROSPETTO 16
+			Map<Territorio, List<Confronto>> mapConfronto =confrontoCircoscrizionalePluri();
+			
+			//PROSPETTO 17-18-19 -> Compensazione Eccedentarie Deficitarie Livello pluri liste
+			compensazioneCollegioPluriListe(mapConfronto);
+		}
 		
 		document.close();
 		
 		log.info("GENERAZIONE DOCUMENTO RIPARTO");
 		
 		return path;
+	}
+
+	private void proclamaEletto() {
+		
+		Map<Territorio, List<CandidatoUni>> mapTerrCndidati = new HashMap<>();
+		
+		listCandidati.stream().collect(Collectors.groupingBy(Base::getIdTerpaCandidato)).entrySet().forEach(e->{
+			
+			Base b = e.getValue().stream().findFirst().orElseThrow(()-> new RuntimeException("Nessun Valore trovato"));
+			
+			Territorio t = new Territorio(e.getKey(), TipoTerritorio.COLLEGIO_UNI, b.getDescTerpaCandidato(), null, null);
+			
+			List<CandidatoUni> listCand = new ArrayList<>();
+			
+			e.getValue().forEach(c->{
+				
+				CandidatoUni cand = new CandidatoUni();
+				
+				cand.setId(c.getIdCandidato());
+				cand.setDataNascita(c.getDataNascita());
+				cand.setVoti(c.getVotiTotCand());
+				cand.setVotiSoloCandidato(c.getVotiSoloCand());
+				cand.setTerritorio(t);
+				
+				listCand.add(cand);
+			});		
+			
+			mapTerrCndidati.put(t, listCand);
+		});
+		
+		mapTerrCndidati.entrySet().forEach(e->{
+			sortCandidati(e.getValue());
+			
+			
+		});
 	}
 
 	private void ripartoListeCollegioPluri() {
@@ -237,8 +282,22 @@ public class RipartoCamera extends AppoggioStampa{
 		//Raggruppo dati a livello nazione
 		list.stream().collect(Collectors.groupingBy(Base::getIdAggregatoRiparto)).entrySet().forEach(y->{
 			Base base = y.getValue().stream().findFirst().orElseThrow(() -> new RuntimeException( "No value find for base in calcola cifra nazionale" ));
-			nazionali.add(new Elemento(base.getIdAggregatoRiparto(), base.getDescLista(),
-					y.getValue().stream().mapToInt(Base::getVotiLista).sum(), null, null, base.getCoterCoali()));
+			Elemento element = new Elemento(base.getIdAggregatoRiparto(), base.getDescLista(),
+					y.getValue().stream().mapToInt(Base::getVotiLista).sum(), null, null, base.getCoterCoali());
+			element.setMinoranza(y.getValue().stream().anyMatch(k-> Objects.nonNull(k.getFlagMinoranza()) && k.getFlagMinoranza().equals(PartecipaRiparto.SI.toString())));
+			
+			if(element.isMinoranza()) {
+				
+				Base b = y.getValue().stream()
+						.filter(k -> Objects.nonNull(k.getFlagMinoranza())
+								&& k.getFlagMinoranza().equals(PartecipaRiparto.SI.toString())).findFirst()
+						.orElseThrow(() -> new RuntimeException("Cod ente non trovato"));
+				
+				Territorio t = new Territorio(b.getIdCircoscrizione(), TipoTerritorio.CIRCOSCRIZIONE, b.getDescCircoscrizione(),  null, b.getCoterCoali());
+				
+				element.setTerritorio(t);
+			}
+			nazionali.add(element);
 		});
 				
 		log.info("CIFRA LISTE NAZIONALI CALCOLATA");
@@ -259,7 +318,31 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		this.setVotiValidi1(soglia3);
 		
+		//Calcolo soglia per regioni con liste di minoranza
+		Map<Integer, List<Base>> mapCodEnteMinoranza = new HashMap<>();
+		Map<Integer, BigDecimal> mapCodEnteSoglia20 = new HashMap<>();
+		
+		list.stream().collect(Collectors.groupingBy(Base::getCodEnte)).entrySet().forEach(z->{
+			mapCodEnteMinoranza.put(Integer.parseInt(String.valueOf(z.getKey())), z.getValue());
+		});
+		
+		Arrays.asList(CircoscirioneMinoranza.values()).forEach(e->{
+			Integer sumVotiCirc = mapCodEnteMinoranza.get(e.getCodEnte()).stream().mapToInt(Base::getVotiLista).sum();
+			BigDecimal soglia20 = truncateDecimal(new BigDecimal(sumVotiCirc * ((double)Sbarramento.VENTI.getValue()/100)), 2);
+			
+			mapCodEnteSoglia20.put(e.getCodEnte(), soglia20);
+		});
+		
 		nazionali.forEach(e-> {
+			
+			BigDecimal soglia20 = Objects.nonNull(e.getTerritorio()) && mapCodEnteSoglia20.containsKey(e.getTerritorio().getCodEnte()) ? mapCodEnteSoglia20.get(e.getTerritorio().getCodEnte()) : null;
+			
+			if(e.isMinoranza() && BigDecimal.valueOf(e.getCifra()).compareTo(soglia20) >= 0) {
+				e.setPartecipaRipartoLista(PartecipaRiparto.SI.toString());
+			}else {
+				e.setPartecipaRipartoLista(PartecipaRiparto.NO.toString());
+			}
+			
 			if(BigDecimal.valueOf(e.getCifra()).compareTo(soglia3) >= 0) {
 				e.setPartecipaRipartoLista(PartecipaRiparto.SI.toString());
 			}else {
@@ -291,8 +374,6 @@ public class RipartoCamera extends AppoggioStampa{
 			nazionaliCoaliListe.add(coali);
 		});
 		
-		//TODO Implementare sbarramente minoranza + coalizione che partecipa con %cona < ed lista ammessa
-		
 		//Sbarramento Coalizioni 10%
 		BigDecimal soglia10 = truncateDecimal(new BigDecimal(sommaVoti *((double)Sbarramento.DIECI.getValue()/100)), 2);
 		
@@ -312,8 +393,6 @@ public class RipartoCamera extends AppoggioStampa{
 			}
 		});
 		
-		creazioneMappaLivelloCircoscrizione(nazionaliCoaliListe);
-	
 		generaProspetto1(nazionaliCoaliListe, sumvoticoali);
 		
 		return nazionaliCoaliListe;
@@ -435,6 +514,14 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		generaProspetto2(elements, sumVotiCOali, q.getQuoziente(), 2, null, numSeggi);
 		
+		//controllo eventuale blocco da riparto nazionale per parita di cifra
+		if(elements.stream().anyMatch(l->l.getSorteggio())) {
+			this.bloccoRiparto = BloccoRiparto.BLOCCO_RIPARTO_NAZIONALE_PARITA_CIFRE;
+			return elements;
+		}
+
+		creazioneMappaLivelloCircoscrizione(nazionali);
+		
 		return elements;
 	}
 	
@@ -463,6 +550,11 @@ public class RipartoCamera extends AppoggioStampa{
 				generaProspetto3(elements, numSeggiDaAssegnare, totVoti, q.getQuoziente(), coal.getDescCoalizione());
 			} catch (DocumentException e1) {
 				log.error("ERRORE GENERAZIONE PROSPETTO 3 coalizione:" +coal.getDescCoalizione());
+			}
+			
+			//controllo eventuale blocco da riparto nazionale per parita di cifra
+			if(elements.stream().anyMatch(l->l.getSorteggio())) {
+				this.bloccoRiparto = BloccoRiparto.BLOCCO_RIPARTO_NAZIONALE_PARITA_CIFRE;
 			}
 		});
 		
@@ -927,7 +1019,9 @@ public class RipartoCamera extends AppoggioStampa{
 				//popolo mappa eccedentarie deficitarie
 				if(prosp.getDiff().compareTo(0) > 0) {
 					//ECCENTARIE
-					mapEccedentarieListePluri.put(listePluri.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(() -> new RuntimeException( "no value found per eccedentarie pluri" )), listePluri);
+					Elemento ee = listePluri.stream().findFirst().orElseThrow(() -> new RuntimeException( "no value found per eccedentarie pluri" ));
+					ChiavePluri chiave = new  ChiavePluri(ee.getTerritorio().getId(), ee.getId());
+					mapEccedentarieListePluri.put(chiave, listePluri);
 				}else if(prosp.getDiff().compareTo(0) < 0){
 					//DEFICITARIE
 					mapDeficitarieListePluri.put(listePluri.stream().map(Elemento::getId).distinct().findFirst().orElseThrow(() -> new RuntimeException( "no value found per deficitarie pluri" )), listePluri);
@@ -993,6 +1087,15 @@ public class RipartoCamera extends AppoggioStampa{
 			}
 		});
 		
+		List<Territorio> circoscizioni = mapConfronto.keySet().stream().collect(Collectors.toList());
+		
+		circoscizioni.sort(sortByCodEnte());
+		
+		circoscizioni.forEach(circ->{
+			
+		});
+		System.out.println();
+		
 //		mapConfronto.entrySet().forEach(c->{
 //			
 //			List<Confronto> eccedntarieNaz = c.getValue().stream().filter(l->l.getDiff().compareTo(0)>0).collect(Collectors.toList());
@@ -1000,7 +1103,8 @@ public class RipartoCamera extends AppoggioStampa{
 //			eccedntarieNaz = sortByDiffCifra(eccedntarieNaz);
 //			
 //			eccedntarieNaz.forEach(e->{
-//				List<Elemento> elements = mapEccedentarieListePluri.get(e.getId());
+//				ChiavePluri chiave = new ChiavePluri(e.getTerritorio().getId(), e.getId());
+//				List<Elemento> elements = mapEccedentarieListePluri.get(chiave);
 //				
 //				elements.sort(compareByDecimale(Ordinamento.DESC));
 //			});
@@ -1021,7 +1125,14 @@ public class RipartoCamera extends AppoggioStampa{
 //				
 //				while (seggiDaAssegnare.get() > 0 || !isSorteggio) {
 //					
-//					listeEccedntarie.sort(compareByDecimale(Ordinamento.DESC));
+//					try {
+//						
+//						listeEccedntarie.sort(compareByDecimale(Ordinamento.DESC));
+//					} catch (Exception e2) {
+//						Elemento ee = listeEccedntarie.stream().findFirst().orElseThrow(()->new RuntimeException());
+//						log.info(ee.getDescrizione()+" "+ee.getTerritorio().getDescrizione()+" "+ee.getQuoziente()+" "+seggiDaAssegnare.get());
+//						throw new RuntimeException();
+//					}
 //					
 //					List<Elemento> eccedntarie = listeEccedntarie.stream().filter(l->l.getId().compareTo(e.getId()) == 0).collect(Collectors.toList());
 //					
@@ -1110,4 +1221,6 @@ public class RipartoCamera extends AppoggioStampa{
 //			
 //		});
 	}
+
+	
 }

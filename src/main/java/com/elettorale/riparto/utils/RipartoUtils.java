@@ -2,13 +2,16 @@ package com.elettorale.riparto.utils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import com.elettorale.riparto.dto.General;
+import com.elettorale.riparto.utils.RipartoUtils.Territorio;
 
 public class RipartoUtils {
 
@@ -29,6 +32,7 @@ public class RipartoUtils {
 		private Territorio territorio;
 		private Quoziente quoziente;
 		private Integer idCoalizione;
+		private boolean minoranza;
 		
 		//COMPENSAZIONE
 		private Integer ordineSottrazione;
@@ -159,6 +163,12 @@ public class RipartoUtils {
 		}
 		public void setSeggioCompensazione(Integer seggioCompensazione) {
 			this.seggioCompensazione = seggioCompensazione;
+		}
+		public boolean isMinoranza() {
+			return minoranza;
+		}
+		public void setMinoranza(boolean minoranza) {
+			this.minoranza = minoranza;
 		}
 		@Override
 		public String toString() {
@@ -378,6 +388,22 @@ public class RipartoUtils {
 		return lista;
 	}
 	
+	protected List<CandidatoUni> sortCandidati(List<CandidatoUni> lista) {
+
+		AtomicBoolean parita = new AtomicBoolean();
+		
+			lista.sort((e1, e2) -> {
+				if(e1.getVoti().compareTo((e2.getVoti())) == 0) {
+					e1.setSorteggio(true);
+					e2.setSorteggio(true);
+					parita.set(true);
+				}
+				return e2.getVoti().compareTo(e1.getVoti());
+			});
+			
+		return lista;
+	}
+	
 	protected Quoziente getQuoziente(Integer dividend, Integer divisor, Quoziente quoziente) {
 		try {
 			if(Objects.isNull(quoziente)) {
@@ -594,6 +620,29 @@ public class RipartoUtils {
 		}
 	}
 	
+	protected enum BloccoRiparto {
+		BLOCCO_RIPARTO_COALIZIONE_SEGGI_DEFICITARI(1, "Blocco riparto compensazione seggi deficitari coalizione."), 
+		BLOCCO_RIPARTO_COLLEGIO(2, "Blocco riparto compensazione seggi collegio."),
+		BLOCCO_RIPARTO_NAZIONALE_PARITA_CIFRE(3,"Blocco riparto nazionale tra liste per parita' di resti e cifra elettorale nazionle di lista."),
+		BLOCCO_RIPARTO_CIRCOSCRIZIONALE_PARITA_CIFRE(4, "Blocco riparto circoscrizionale per parita' di decimali quoziente attribuzione e cifra elettorale nazionale."),
+		BLOCCO_RIPARTO_LISTE_CIRCOSCRIZIONALE_PARITA_CIFRE(5, "Blocco circoscrizionale: parita' di decimali quoziente attribuzione e di cifre circoscrizionali - Riparto Liste."),//oldBlocco circoscrizionale: parita' di decimali, quoziente attribuzione e di cifre circoscrizionali - Riparto Liste"; // scenario 7
+		BLOCCO_RIPARTO_LISTE_NAZIONALI_PARITA_CIFRE (6,"Blocco circoscrizionale: parita' di decimali quoziente attribuzione e di cifre nazionali durante compensazione."), // scenario 6
+		BLOCCO_RIPARTO_COLLEGI_CIRCOSCRIZIONALE_PARITA_CIFRE(7, "Blocco circoscrizionale: parita' di decimali quoziente attribuzione e di cifre circoscrizionali - Riparto Collegi");
+		
+		BloccoRiparto(Integer id, String value) {
+			this.id = id;
+			this.setValue(value);
+		}
+		public String getValue() {
+			return value;
+		}
+		public void setValue(String value) {
+			this.value = value;
+		}
+		private Integer id;
+		private String value;
+		
+	}
 	protected List<Confronto> sortByDiffCifra(List<Confronto> lista){
 		
 		lista.sort((e1,e2) -> {
@@ -611,5 +660,140 @@ public class RipartoUtils {
 		
 	}
 	
+	protected enum CircoscirioneMinoranza{
+		TRENTINO_ALTO_ADIGE(28),
+		FRIULI_VENEZIA_GIULIA(9);
+		
+		private Integer codEnte;
+		
+		CircoscirioneMinoranza(Integer codEnte) {
+			this.codEnte = codEnte;
+		}
+		
+		public Integer getValue(CircoscirioneMinoranza circMin) {
+			return circMin.getCodEnte();
+		}
+
+		public Integer getCodEnte() {
+			return codEnte;
+		}
+		
+	}
+	
+	
+	public class ChiavePluri{
+		private Integer idEnte;
+		private Integer idAggregato;
+		
+		public ChiavePluri(Integer idEnte, Integer idAggregato) {
+			super();
+			this.idEnte = idEnte;
+			this.idAggregato = idAggregato;
+		}
+		public Integer getIdEnte() {
+			return idEnte;
+		}
+		public void setIdEnte(Integer idEnte) {
+			this.idEnte = idEnte;
+		}
+		public Integer getIdAggregato() {
+			return idAggregato;
+		}
+		public void setIdAggregato(Integer idAggregato) {
+			this.idAggregato = idAggregato;
+		}
+		
+		@Override
+		public boolean equals(Object obj) {
+
+			boolean ret = false;
+			
+			if(obj instanceof ChiavePluri) {
+				ChiavePluri t = (ChiavePluri)obj;
+				
+				if (this.getIdAggregato().compareTo(t.getIdAggregato()) == 0
+						&& this.getIdEnte().compareTo(t.getIdEnte()) == 0) {
+					ret = true;
+				}
+			}
+			return ret;
+		}
+	}
+	
+	public class CandidatoUni{
+		private Integer id;
+		private Date dataNascita;
+		private Territorio territorio;
+		private Integer voti;
+		private Integer votiSoloCandidato;
+		private boolean eletto;
+		private boolean sorteggio;
+		private List<Integer> listIdAggregato = new ArrayList<>();
+		private List<Integer> listIdLista = new ArrayList<>();
+		
+		public Integer getId() {
+			return id;
+		}
+		public void setId(Integer id) {
+			this.id = id;
+		}
+		public Date getDataNascita() {
+			return dataNascita;
+		}
+		public void setDataNascita(Date dataNascita) {
+			this.dataNascita = dataNascita;
+		}
+		public Territorio getTerritorio() {
+			return territorio;
+		}
+		public void setTerritorio(Territorio territorio) {
+			this.territorio = territorio;
+		}
+		public Integer getVoti() {
+			return voti;
+		}
+		public void setVoti(Integer voti) {
+			this.voti = voti;
+		}
+		public Integer getVotiSoloCandidato() {
+			return votiSoloCandidato;
+		}
+		public void setVotiSoloCandidato(Integer votiSoloCandidato) {
+			this.votiSoloCandidato = votiSoloCandidato;
+		}
+		public List<Integer> getListIdAggregato() {
+			return listIdAggregato;
+		}
+		public void setListIdAggregato(List<Integer> listIdAggregato) {
+			this.listIdAggregato = listIdAggregato;
+		}
+		public List<Integer> getListIdLista() {
+			return listIdLista;
+		}
+		public void setListIdLista(List<Integer> listIdLista) {
+			this.listIdLista = listIdLista;
+		}
+		public boolean isEletto() {
+			return eletto;
+		}
+		public void setEletto(boolean eletto) {
+			this.eletto = eletto;
+		}
+		public boolean isSorteggio() {
+			return sorteggio;
+		}
+		public void setSorteggio(boolean sorteggio) {
+			this.sorteggio = sorteggio;
+		}
+	
+		@Override
+		public String toString() {
+			return this.id +" "+this.voti+" "+this.sorteggio;
+		}
+	}
+	
+	public Comparator<? super Territorio> sortByCodEnte() {
+		return (e1,e2)-> e1.getCodEnte().compareTo(e2.getCodEnte());
+	}
 	
 }
