@@ -409,11 +409,12 @@ public class AppoggioStampa extends RipartoUtils {
 		log.info("generato PROSPETTO "+prosp);
 	}
 
-	protected void generaProspetto19(List<Confronto> listProspetto6, String ente) throws DocumentException {
+	protected void generaProspetto19(List<Prospetto9> lista, String ente) throws DocumentException {
 
 		document.newPage();
 
 		document.add(addParagraph("PROSPETTO 19", 15));
+
 
 		if(ente != null) {
 			document.add(addParagraph("CIRCOSCRIZIONE "+ente, 13));
@@ -421,31 +422,44 @@ public class AppoggioStampa extends RipartoUtils {
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 15));
 
-		float[] width = { 30, 20, 20, 20, 10 };
+		float[] width = { 20, 15, 14, 20, 15, 14, 2 };
 
 		PdfPTable table = new PdfPTable(width);
 
 		table.setWidthPercentage(100);
 
-		addTableHeader6(table);
+		Arrays.asList("Eccedntaria", "Collegio", "Decimali", "Deficitaria", "Collegio", "Decimali", "Shift")
+				.forEach(columnTitle -> {
+					PdfPCell header = new PdfPCell();
+					header.setBackgroundColor(BaseColor.LIGHT_GRAY);
+					header.setBorderWidth(2);
+					header.setPhrase(new Phrase(columnTitle));
+					table.addCell(header);
+				});
 
-		listProspetto6.forEach(e -> {
+		lista.forEach(e -> {
 			PdfPCell cell = new PdfPCell();
-			cell.addElement(addParagraph(e.getDescLista(), 10));
+			cell.addElement(addParagraph(String.valueOf(e.getEccedntaria().getDescrizione()), 10));
 			PdfPCell cell2 = new PdfPCell();
-			cell2.addElement(addParagraph(String.valueOf(e.getSeggiQICirc()), 10));
+			cell2.addElement(addParagraph(String.valueOf(e.getEccedntaria().getTerritorio().getDescrizione()), 10));
 			PdfPCell cell12 = new PdfPCell();
-			cell12.addElement(addParagraph(String.valueOf(e.getSeggiTotCirc()), 10));
+			cell12.addElement(addParagraph(String.valueOf(e.getEccedntaria().getQuoziente().getDecimale()), 10));
 			PdfPCell cell3 = new PdfPCell();
-			cell3.addElement(addParagraph(String.valueOf(e.getSeggiNazionali()), 10));
+			cell3.addElement(addParagraph(String.valueOf(e.getDeficitaria().getDescrizione()), 10));
 			PdfPCell cell4 = new PdfPCell();
-			cell4.addElement(addParagraph(String.valueOf(e.getDiff()), 10));
+			cell4.addElement(addParagraph(String.valueOf(e.getDeficitaria().getTerritorio().getDescrizione()), 10));
+			PdfPCell cell5 = new PdfPCell();
+			cell5.addElement(addParagraph(String.valueOf(e.getDeficitaria().getQuoziente().getDecimale()), 10));
+			PdfPCell cell6 = new PdfPCell();
+			cell6.addElement(addParagraph(String.valueOf(e.getDeficitaria().isShift() ? "*" : ""), 10));
 
 			table.addCell(cell);
 			table.addCell(cell2);
 			table.addCell(cell12);
 			table.addCell(cell3);
 			table.addCell(cell4);
+			table.addCell(cell5);
+			table.addCell(cell6);
 		});
 
 		table.addCell(new PdfPCell());
@@ -457,8 +471,8 @@ public class AppoggioStampa extends RipartoUtils {
 		p.add(table);
 
 		document.add(p);
-
 		log.info("generato PROSPETTO 19");
+
 	}
 	
 	protected void generaProspetto7_12(List<Elemento> lista, int i) throws DocumentException {

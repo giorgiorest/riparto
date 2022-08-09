@@ -5,7 +5,9 @@ import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -13,6 +15,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -1099,15 +1102,21 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		
 		//prospetto 19
-		List<Territorio> circoscizioni = mapConfronto.keySet().stream().collect(Collectors.toList());
+		List<Territorio> circoscizioni = new ArrayList<>();
+		
+		mapConfronto.entrySet().forEach(e->{
+			if(e.getValue().stream().anyMatch(l->l.getDiff() > 0 || l.getDiff() < 0)) {
+				circoscizioni.add(e.getKey());
+			}
+		});
+		
 		
 		circoscizioni.sort(sortByCodEnte());
 		
 		circoscizioni.forEach(circ->{
 			List<Confronto> listCircConfronto = mapConfronto.get(circ);
 			
-			
-			
+			Map<Integer, Integer> mapIdAggSeggiEcc = new HashMap<>();
 			
 			//cerco da quale eccedentaria partire: quella con DIFF più alta
 			//a parita di DIFF prendo liste nei pluri che hanno preso seggi qui e che hanno decimali più BASSI
@@ -1123,14 +1132,19 @@ public class RipartoCamera extends AppoggioStampa{
 						.filter(t -> t.getPadre().getId().compareTo(s.getTerritorio().getId()) == 0)
 						.collect(Collectors.toList());
 				
-				collegiPluri.forEach(c -> mapPluriListeElemento.get(c).stream()
-						.filter(l -> l.getId().compareTo(s.getId()) == 0 && l.getSeggiDecimali().compareTo(1) == 0)
-						.forEach(ll -> eccCirc.add(ll)));
+				mapIdAggSeggiEcc.put(s.getId(), s.getDiff());
+				
+				List<Elemento> ele =  collegiPluri.stream().map(c -> mapPluriListeElemento.get(c).stream()
+						.filter(l -> l.getId().compareTo(s.getId()) == 0 && l.getSeggiDecimali().compareTo(1) == 0).sorted(sortDecimaleAsc())
+						.limit(mapIdAggSeggiEcc.get(s.getId())).collect(Collectors.toList())).findFirst().get();
+				
+				eccCirc.addAll(ele);
 				
 				mapIdListaDiff.put(s.getId(), s.getDiff());
 			});
 			
 			
+			Map<Integer, Integer> mapIdAggSeggiDef = new HashMap<>();
 			
 			//cerco da quale deficitaria partire: quella con DIFF più basse
 			//a parita di DIFF prendo liste nei pluri che NON hanno preso seggi qui e che hanno decimali più ALTI
@@ -1146,28 +1160,65 @@ public class RipartoCamera extends AppoggioStampa{
 						.filter(t -> t.getPadre().getId().compareTo(s.getTerritorio().getId()) == 0)
 						.collect(Collectors.toList());
 				
-				collegiPluri.forEach(c -> mapPluriListeElemento.get(c).stream()
-						.filter(l -> l.getId().compareTo(s.getId()) == 0 && l.getSeggiDecimali().compareTo(1) == 0)
-						.forEach(ll -> defCirc.add(ll)));
+				mapIdAggSeggiDef.put(s.getId(), Math.abs(s.getDiff()));
+				
+				List<Elemento> ele = collegiPluri.stream().map(c -> mapPluriListeElemento.get(c).stream()
+						.filter(l -> l.getId().compareTo(s.getId()) == 0 && l.getSeggiDecimali().compareTo(0) == 0).sorted(sortDecimaleDesc())
+						.limit(mapIdAggSeggiDef.get(s.getId()))
+						.collect(Collectors.toList())).findFirst().get();
+				defCirc.addAll(ele);
 			});
 			
+
+			List<Prospetto9> prospetto = new ArrayList<>();
+			
+			log.info("CIRC: {}", circ.getDescrizione());
 			
 			eccCirc.forEach(e->{
-				AtomicInteger diff = new AtomicInteger(mapIdListaDiff.get(e.getId()));
+				log.info("ECC: {}", e.getDescrizione());
+				AtomicInteger seggiEcc = new AtomicInteger(mapIdAggSeggiEcc.get(e.getId()));
 				
-				
+				while (seggiEcc.get() > 0) {
+					boolean assegnato = false;
+					if(defCirc.isEmpty()) {
+						log.error("----------------------------------------       SHIFT no def found----------------------------------");
+						seggiEcc.getAndDecrement();
+					}
+					for (Elemento def : defCirc) {
+						AtomicInteger seggiDef = new AtomicInteger(mapIdAggSeggiDef.get(def.getId()));
+						if (seggiEcc.get() > 0 /*&& seggiDef.get() != defCirc.stream()
+								.filter(d -> d.getId().compareTo(def.getId()) == 0 && d.isRiceveSeggio()).count()*/
+								&& !def.isRiceveSeggio()) {
+							
+							assegnato = !assegnato;
+							def.setRiceveSeggio(true);
+							e.setCedeSeggio(true);
+							seggiEcc.getAndDecrement();
+							log.error("{} CEDE A {}", e.getDescrizione(), def.getDescrizione());
+							prospetto.add(new Prospetto9(e, def));
+						}
+						
+						if(!assegnato) {
+							log.error("----------------------------------------       SHIFT ----------------------------------");
+							seggiEcc.getAndDecrement();
+						}
+					}
+				}
 			});
 			
 			try {
-				generaProspetto19(null, null);
+				generaProspetto19(prospetto, circ.getDescrizione());
 			} catch (DocumentException e1) {
 				e1.printStackTrace();
 			}
-			//cerco eccedtaria con maggior diff, se parità prendo quella che ha preso seggio decimale e ha quozinete piu basso.
-			//do a deficitaria con maggior diff, se parità do a quella che non ha preso seggio decimale e ha quoziente piu alto
-			
-			//se non ci sta -> SHIFT da gestire
 		});
 	}
 
+	private Comparator<? super Elemento> sortDecimaleDesc() {
+		return (e1, e2)->e2.getQuoziente().getDecimale().compareTo(e1.getQuoziente().getDecimale());
+	}
+
+	private Comparator<? super Elemento> sortDecimaleAsc() {
+		return (e1, e2)->e1.getQuoziente().getDecimale().compareTo(e2.getQuoziente().getDecimale());
+	}
 }
