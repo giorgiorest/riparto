@@ -3,6 +3,7 @@ package com.elettorale.riparto.calcolo;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -82,7 +83,7 @@ public class AppoggioStampa extends RipartoUtils {
 		this.votiValidi20 = votiValidi20;
 	}
 
-	protected void generaProspetto1(List<Coalizione> nazionali, AtomicInteger sumvoticoali) throws DocumentException {
+	protected void generaProspetto1(List<Coalizione> nazionali, AtomicInteger sumvoticoali, Map<String, BigDecimal> mapTerrCifraSoglia20) throws DocumentException {
 
 		document.newPage();
 
@@ -91,6 +92,13 @@ public class AppoggioStampa extends RipartoUtils {
 		document.add(addParagraph("TOTALE VOTI VALIDI = " + this.getTotaleVotiValidi().toString(), 12));
 		document.add(addParagraph("VOTI VALIDI 3% = " + this.getVotiValidi1().toString(), 12));
 		document.add(addParagraph("VOTI VALIDI 10% = " + this.getVotiValidi3().toString(), 12));
+		mapTerrCifraSoglia20.entrySet().forEach(s->{
+			try {
+				document.add(addParagraph("VOTI VALIDI 20% = " + s.getValue().toString() + " " + s.getKey(), 12));
+			} catch (DocumentException e) {
+				e.printStackTrace();
+			}
+		});
 
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 12));
@@ -115,7 +123,7 @@ public class AppoggioStampa extends RipartoUtils {
 				PdfPCell cell8 = new PdfPCell();
 
 				// LISTA
-				cell.addElement(addParagraph(lista.getDescrizione(), 10));
+				cell.addElement(addParagraph((lista.getDescrizione()+ (lista.isMinoranza() ? " * " : "")), 10));
 				cell2.addElement(addParagraph(String.valueOf(lista.getCifra()), 10));
 				cell3.addElement(addParagraph(String.valueOf(lista.getPercentualeLista()), 10));
 				cell4.addElement(addParagraph(lista.getPartecipaRipartoLista(), 10));
@@ -401,6 +409,58 @@ public class AppoggioStampa extends RipartoUtils {
 		log.info("generato PROSPETTO "+prosp);
 	}
 
+	protected void generaProspetto19(List<Confronto> listProspetto6, String ente) throws DocumentException {
+
+		document.newPage();
+
+		document.add(addParagraph("PROSPETTO 19", 15));
+
+		if(ente != null) {
+			document.add(addParagraph("CIRCOSCRIZIONE "+ente, 13));
+		}
+		document.add(Chunk.NEWLINE);
+		document.add(addParagraph("", 15));
+
+		float[] width = { 30, 20, 20, 20, 10 };
+
+		PdfPTable table = new PdfPTable(width);
+
+		table.setWidthPercentage(100);
+
+		addTableHeader6(table);
+
+		listProspetto6.forEach(e -> {
+			PdfPCell cell = new PdfPCell();
+			cell.addElement(addParagraph(e.getDescLista(), 10));
+			PdfPCell cell2 = new PdfPCell();
+			cell2.addElement(addParagraph(String.valueOf(e.getSeggiQICirc()), 10));
+			PdfPCell cell12 = new PdfPCell();
+			cell12.addElement(addParagraph(String.valueOf(e.getSeggiTotCirc()), 10));
+			PdfPCell cell3 = new PdfPCell();
+			cell3.addElement(addParagraph(String.valueOf(e.getSeggiNazionali()), 10));
+			PdfPCell cell4 = new PdfPCell();
+			cell4.addElement(addParagraph(String.valueOf(e.getDiff()), 10));
+
+			table.addCell(cell);
+			table.addCell(cell2);
+			table.addCell(cell12);
+			table.addCell(cell3);
+			table.addCell(cell4);
+		});
+
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+		table.addCell(new PdfPCell());
+
+		Paragraph p = new Paragraph();
+		p.add(table);
+
+		document.add(p);
+
+		log.info("generato PROSPETTO 19");
+	}
+	
 	protected void generaProspetto7_12(List<Elemento> lista, int i) throws DocumentException {
 
 		document.newPage();

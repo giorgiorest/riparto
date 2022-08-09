@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import com.elettorale.riparto.dto.General;
-import com.elettorale.riparto.utils.RipartoUtils.Territorio;
 
 public class RipartoUtils {
 
@@ -172,7 +171,7 @@ public class RipartoUtils {
 		}
 		@Override
 		public String toString() {
-			return this.descrizione+" QI:"+this.seggiQI +" DEC: "+this.seggiDecimali;
+			return this.descrizione+ " "+this.territorio.descrizione+" SEGGI QI:"+this.seggiQI +", SEGGI DEC: "+this.seggiDecimali+", DEC: "+this.quoziente.decimale;
 		}
 	}
 
@@ -569,7 +568,14 @@ public class RipartoUtils {
 		private Integer cifraNazionale;
 
 		private Territorio territorio;
+		private boolean parita;
 		
+		public boolean isParita() {
+			return parita;
+		}
+		public void setParita(boolean parita) {
+			this.parita = parita;
+		}
 		public Integer getId() {
 			return id;
 		}
@@ -618,6 +624,11 @@ public class RipartoUtils {
 		public void setTerritorio(Territorio territorio) {
 			this.territorio = territorio;
 		}
+		
+		@Override
+		public String toString() {
+			return this.descLista + " diff: "+this.diff;
+		}
 	}
 	
 	protected enum BloccoRiparto {
@@ -643,19 +654,45 @@ public class RipartoUtils {
 		private String value;
 		
 	}
-	protected List<Confronto> sortByDiffCifra(List<Confronto> lista){
+	
+	protected List<Confronto> sortByDiffCifra(List<Confronto> lista, Ordinamento ordinamento){
 		
-		lista.sort((e1,e2) -> {
-			//se seggi eccedntari uguali, ordino per maggior cifra
-			if(e1.getDiff().compareTo(e2.getDiff()) == 0) {
-				//Ordino per cifra maggiore
-				return e1.getCifraNazionale().compareTo(e2.getCifraNazionale());
-			}else {
-				//ordino per maggior seggi eccedentari
-				return e2.getDiff().compareTo(e1.getDiff());
-			}
-			
-		});
+		switch (ordinamento) {
+		case DESC:
+			lista.sort((e1,e2) -> {
+				//se seggi eccedntari uguali, ordino per maggior cifra
+				if(e1.getDiff().compareTo(e2.getDiff()) == 0) {
+					e1.setParita(true);
+					e2.setParita(true);
+					//Ordino per cifra maggiore
+					return e1.getCifraNazionale().compareTo(e2.getCifraNazionale());
+				}else {
+					//ordino per maggior seggi eccedentari
+					return e2.getDiff().compareTo(e1.getDiff());
+				}
+				
+			});
+			break;
+		case ASC:
+			lista.sort((e1,e2) -> {
+				//se seggi eccedntari uguali, ordino per maggior cifra
+				if(e1.getDiff().compareTo(e2.getDiff()) == 0) {
+					e1.setParita(true);
+					e2.setParita(true);
+					//Ordino per cifra maggiore
+					return e1.getCifraNazionale().compareTo(e2.getCifraNazionale());
+				}else {
+					//ordino per maggior seggi eccedentari
+					return e1.getDiff().compareTo(e2.getDiff());
+				}
+				
+			});
+			break;
+
+		default:
+			break;
+		}
+		
 		return lista;
 		
 	}

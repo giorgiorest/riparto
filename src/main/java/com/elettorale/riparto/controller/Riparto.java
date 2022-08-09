@@ -211,6 +211,8 @@ public class Riparto {
 				+ "					PARTI.PARTI_SEQ_PARTITO_PK = CONPA.CONPA_PARTI_PARTITO\r\n"
 				+ "				WHERE\r\n"
 				+ "					COTER.COTER_RICUS_RICUSAZIONE = 1\r\n"
+				+ "					AND VOTLI.VOTLI_NUM_VOTI_VAl <> -1 \r\n"
+				+ "					AND ( SCORP.SCORP_VAL_SCORPORO IS NULL OR SCORP.SCORP_VAL_SCORPORO > -1)\r\n"			
 				+ "				GROUP BY\r\n"
 				+ "					TERR.ID_PLURI,\r\n"
 				+ "					TERR.DESC_PLURI,\r\n"
