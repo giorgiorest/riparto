@@ -9,14 +9,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,35 +136,70 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		Map<Territorio, List<CandidatoUni>> mapTerrCndidati = new HashMap<>();
 		
-		listCandidati.stream().collect(Collectors.groupingBy(Base::getIdTerpaCandidato)).entrySet().forEach(e->{
-			
-			Base b = e.getValue().stream().findFirst().orElseThrow(()-> new RuntimeException("Nessun Valore trovato"));
-			
-			Territorio t = new Territorio(e.getKey(), TipoTerritorio.COLLEGIO_UNI, b.getDescTerpaCandidato(), null, null);
+		listCandidati.stream().collect(Collectors.groupingBy(Base::getIdTerpaCandidato)).entrySet().forEach(el->{
 			
 			List<CandidatoUni> listCand = new ArrayList<>();
+			Territorio t = new Territorio(el.getKey(), TipoTerritorio.COLLEGIO_UNI, null, null, null);
 			
-			e.getValue().forEach(c->{
+			el.getValue().stream().collect(Collectors.groupingBy(Base::getIdCandidato)).entrySet().forEach(candi->{
+
+				Base b = el.getValue().stream().filter(x->x.getIdCandidato().compareTo(candi.getKey()) == 0).findFirst().orElseThrow(()-> new RuntimeException("Nessun Valore trovato"));
+				
+				t.setDescrizione(b.getDescTerpaCandidato());
 				
 				CandidatoUni cand = new CandidatoUni();
 				
-				cand.setId(c.getIdCandidato());
-				cand.setDataNascita(c.getDataNascita());
-				cand.setVoti(c.getVotiTotCand());
-				cand.setVotiSoloCandidato(c.getVotiSoloCand());
+				cand.setId(candi.getKey());
+				cand.setDataNascita(b.getDataNascita());
+				cand.setVoti(b.getVotiTotCand());
+				cand.setVotiSoloCandidato(b.getVotiSoloCand());
 				cand.setTerritorio(t);
+				cand.setListIdAggregato(candi.getValue().stream().map(Base::getIdAggregatoRiparto).distinct().collect(Collectors.toList()));
 				
 				listCand.add(cand);
-			});		
+			});
 			
 			mapTerrCndidati.put(t, listCand);
+			
 		});
 		
 		mapTerrCndidati.entrySet().forEach(e->{
 			sortCandidati(e.getValue());
 			
+			AtomicInteger position = new AtomicInteger(1);
 			
+			for (int i = 0; i < e.getValue().size(); i++) {
+				CandidatoUni candidato = e.getValue().get(i);
+				
+				if(candidato.isParitaVoti()) {
+					candidato.setPosizione(position.get());
+				}else {
+					candidato.setPosizione(position.getAndIncrement());
+				}
+			}
+			
+			List<CandidatoUni> uniVincenti = e.getValue().stream().filter(c->c.getPosizione().compareTo(1) == 0).collect(Collectors.toList());
+			
+			if(uniVincenti.size() == 1) {
+				uniVincenti.stream().findFirst().get().setEletto(true);
+				log.info("Eletto trovato in {}", e.getKey().getDescrizione());
+			}else {
+				sortCandidatiDataNascita(uniVincenti);
+				
+				if(uniVincenti.stream().allMatch(c->c.isSorteggio())) {
+					e.getKey().setSorteggioCollegio(true);
+					log.info("Sorteggio candidati in {}", e.getKey().getDescrizione());
+				}else {
+					uniVincenti.stream().findFirst().get().setEletto(true);
+					log.info("Eletto più giovane in {}", e.getKey().getDescrizione());
+				}
+			}
+		
+
 		});
+		
+		
+		
 	}
 
 	private void ripartoListeCollegioPluri() {
@@ -395,7 +427,8 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		nazionaliCoaliListe.forEach(el->{
 			//calcolo partecipa riparto coalizione solo per liste in coalizione che partecipano al riparto
-			if(BigDecimal.valueOf(((Coalizione)el).getNumVotiCoalizione()).compareTo(soglia10) >= 0) {
+			if ((el.getListe().stream().anyMatch(c->c.getPartecipaRipartoLista().compareTo(PartecipaRiparto.SI.toString()) == 0))
+					|| BigDecimal.valueOf(((Coalizione) el).getNumVotiCoalizione()).compareTo(soglia10) >= 0) {
 				el.setPartecipaRipartoCoalizione(PartecipaRiparto.SI.toString());
 				//Calcolo % Coalizione
 				el.setPercentualeCoalizione(truncateDecimal(new BigDecimal(((double)((Coalizione)el).getNumVotiCoalizione()/sommaVoti)*100), 3));

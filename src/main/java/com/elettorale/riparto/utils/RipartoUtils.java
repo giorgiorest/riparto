@@ -183,6 +183,8 @@ public class RipartoUtils {
 		private Integer codEnte;
 		private Territorio padre;
 		
+		private boolean sorteggioCollegio;
+		
 		public Territorio(Integer id, TipoTerritorio tipoTerritorio, String descrizione, Integer numSeggi, Integer codEnte) {
 			super();
 			this.id = id;
@@ -241,6 +243,14 @@ public class RipartoUtils {
 
 		public void setPadre(Territorio padre) {
 			this.padre = padre;
+		}
+
+		public boolean isSorteggioCollegio() {
+			return sorteggioCollegio;
+		}
+
+		public void setSorteggioCollegio(boolean sorteggioCollegio) {
+			this.sorteggioCollegio = sorteggioCollegio;
 		}
 
 		@Override
@@ -389,15 +399,25 @@ public class RipartoUtils {
 	
 	protected List<CandidatoUni> sortCandidati(List<CandidatoUni> lista) {
 
-		AtomicBoolean parita = new AtomicBoolean();
-		
+			lista.sort((e1, e2) -> {
+				if(e1.getVoti().compareTo((e2.getVoti())) == 0) {
+					e1.setParitaVoti(true);
+					e2.setParitaVoti(true);
+				}
+				return e2.getVoti().compareTo(e1.getVoti());
+			});
+			
+		return lista;
+	}
+	
+	protected List<CandidatoUni> sortCandidatiDataNascita(List<CandidatoUni> lista) {
+
 			lista.sort((e1, e2) -> {
 				if(e1.getVoti().compareTo((e2.getVoti())) == 0) {
 					e1.setSorteggio(true);
 					e2.setSorteggio(true);
-					parita.set(true);
 				}
-				return e2.getVoti().compareTo(e1.getVoti());
+				return e1.getVoti().compareTo(e2.getVoti());
 			});
 			
 		return lista;
@@ -765,8 +785,10 @@ public class RipartoUtils {
 		private Integer votiSoloCandidato;
 		private boolean eletto;
 		private boolean sorteggio;
+		private boolean paritaVoti;
 		private List<Integer> listIdAggregato = new ArrayList<>();
 		private List<Integer> listIdLista = new ArrayList<>();
+		private Integer posizione;
 		
 		public Integer getId() {
 			return id;
@@ -823,6 +845,18 @@ public class RipartoUtils {
 			this.sorteggio = sorteggio;
 		}
 	
+		public Integer getPosizione() {
+			return posizione;
+		}
+		public void setPosizione(Integer posizione) {
+			this.posizione = posizione;
+		}
+		public boolean isParitaVoti() {
+			return paritaVoti;
+		}
+		public void setParitaVoti(boolean paritaVoti) {
+			this.paritaVoti = paritaVoti;
+		}
 		@Override
 		public String toString() {
 			return this.id +" "+this.voti+" "+this.sorteggio;
