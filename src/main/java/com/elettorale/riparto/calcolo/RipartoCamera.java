@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -21,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import com.elettorale.riparto.dto.Base;
 import com.elettorale.riparto.dto.Coalizione;
 import com.elettorale.riparto.utils.Prospetto9;
+import com.elettorale.riparto.utils.Territorio;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfWriter;
 
@@ -62,9 +62,12 @@ public class RipartoCamera extends AppoggioStampa{
 	private List<Prospetto9> listProspetto9 = new ArrayList<>();
 	private List<Prospetto9> listProspetto14 = new ArrayList<>();
 	
-	public RipartoCamera(List<Base> list, List<Base> listCandidati) {
+	List<Territorio> listTerritori;
+	
+	public RipartoCamera(List<Base> list, List<Base> listCandidati, List<Territorio> listTerritori) {
 		this.list = list;
 		this.listCandidati = listCandidati;
+		this.listTerritori = listTerritori;
 	}
 
 	public String eseguiRiparto(boolean isLocal, String dataElezione) throws FileNotFoundException, DocumentException {
@@ -139,13 +142,19 @@ public class RipartoCamera extends AppoggioStampa{
 		listCandidati.stream().collect(Collectors.groupingBy(Base::getIdTerpaCandidato)).entrySet().forEach(el->{
 			
 			List<CandidatoUni> listCand = new ArrayList<>();
-			Territorio t = new Territorio(el.getKey(), TipoTerritorio.COLLEGIO_UNI, null, null, null);
+			Territorio uni = new Territorio(el.getKey(), TipoTerritorio.COLLEGIO_UNI, null, null, null);
+			
+			Base bb = el.getValue().stream().findFirst().orElseThrow(()-> new RuntimeException("Nessun Valore trovato"));
+			
+			Territorio pluri = new Territorio(bb.getIdCollegioPluri(), TipoTerritorio.COLLEGIO_PLURI, bb.getDescCollegioPluri(), null, null);
+			
+			uni.setPadre(pluri);
 			
 			el.getValue().stream().collect(Collectors.groupingBy(Base::getIdCandidato)).entrySet().forEach(candi->{
 
 				Base b = el.getValue().stream().filter(x->x.getIdCandidato().compareTo(candi.getKey()) == 0).findFirst().orElseThrow(()-> new RuntimeException("Nessun Valore trovato"));
 				
-				t.setDescrizione(b.getDescTerpaCandidato());
+				uni.setDescrizione(b.getDescTerpaCandidato());
 				
 				CandidatoUni cand = new CandidatoUni();
 				
@@ -153,13 +162,13 @@ public class RipartoCamera extends AppoggioStampa{
 				cand.setDataNascita(b.getDataNascita());
 				cand.setVoti(b.getVotiTotCand());
 				cand.setVotiSoloCandidato(b.getVotiSoloCand());
-				cand.setTerritorio(t);
+				cand.setTerritorio(uni);
 				cand.setListIdAggregato(candi.getValue().stream().map(Base::getIdAggregatoRiparto).distinct().collect(Collectors.toList()));
 				
 				listCand.add(cand);
 			});
 			
-			mapTerrCndidati.put(t, listCand);
+			mapTerrCndidati.put(uni, listCand);
 			
 		});
 		
@@ -454,12 +463,13 @@ public class RipartoCamera extends AppoggioStampa{
 		List<Territorio> territorioCircList = list.stream().collect(Collectors.groupingBy(Base::getIdCircoscrizione)).entrySet().stream().map(m->{
 			Base circ = m.getValue().stream().findFirst().orElseThrow(() -> new RuntimeException("no value found for base in crea mappa circ"));
 			
-			Integer numSeggiCirc = m.getValue().stream().collect(Collectors.groupingBy(Base::getIdCollegioPluri))
-					.entrySet().stream()
-					.collect(Collectors.toMap(x -> x.getKey(),
-							y -> (y.getValue().stream().map(Base::getNumSeggi).distinct().findFirst().orElseThrow(
-									() -> new RuntimeException("Num seggi NULL in crea mappa circoscrizionale")))))
-					.entrySet().stream().mapToInt(p -> p.getValue()).sum();
+			Integer numSeggiCirc = listTerritori.stream().filter(p->p.getPadre().getId().compareTo(m.getKey()) == 0).mapToInt(Territorio::getNumSeggi).sum();
+//			m.getValue().stream().collect(Collectors.groupingBy(Base::getIdCollegioPluri))
+//					.entrySet().stream()
+//					.collect(Collectors.toMap(x -> x.getKey(),
+//							y -> (y.getValue().stream().map(Base::getNumSeggi).distinct().findFirst().orElseThrow(
+//									() -> new RuntimeException("Num seggi NULL in crea mappa circoscrizionale")))))
+//					.entrySet().stream().mapToInt(p -> p.getValue()).sum();
 					
 			return new Territorio(m.getKey(), TipoTerritorio.CIRCOSCRIZIONE, circ.getDescCircoscrizione(), numSeggiCirc, circ.getCodEnte());
 		}).collect(Collectors.toList());
@@ -551,9 +561,7 @@ public class RipartoCamera extends AppoggioStampa{
 		Integer sumVotiCOali = elements.stream().mapToInt(Elemento::getCifra).sum();
 		
 		//recupera voti da db
-		Integer numSeggi  = list.stream().collect(Collectors.groupingBy(Base::getIdCollegioPluri)).entrySet().stream()
-				.collect(Collectors.toMap(x -> x.getKey(), y -> y.getValue().stream().findFirst().get().getNumSeggi()))
-				.values().stream().mapToInt(s -> s).sum();
+		Integer numSeggi  = listTerritori.stream().mapToInt(Territorio::getNumSeggi).sum();
 
 		Quoziente q = assegnaseggiQIMassimiResti(elements, numSeggi, sumVotiCOali,TipoOrdinamento.RESTI);
 		
@@ -635,7 +643,9 @@ public class RipartoCamera extends AppoggioStampa{
 			
 			elements.forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null)));
 			
-			assegnaseggiQIMassimiResti(elements, x.getKey().getNumSeggi(), numVoti, TipoOrdinamento.DECIMALI);
+			Integer numSeggi = listTerritori.stream().filter(l->l.getPadre().getId().compareTo(x.getKey().getId()) == 0).mapToInt(Territorio::getNumSeggi).sum(); 
+					
+			assegnaseggiQIMassimiResti(elements, numSeggi, numVoti, TipoOrdinamento.DECIMALI);
 			
 			mapCircListeElemento.put(x.getKey(), elements);
 			
@@ -954,6 +964,9 @@ public class RipartoCamera extends AppoggioStampa{
 						//cerco deficitaria nello stesso territorio
 						assegnaSeggiDeficitaria(listaDeficitarie, ordineSottrazione, seggiDaAssegnare, ecc, terrEcc, false, TipoTerritorio.CIRCOSCRIZIONE);
 						
+					}else {
+						log.info("Che cazzo succede?????");
+						seggiDaAssegnare.getAndDecrement();
 					}
 					
 					//se ho assegnato tutti i seggi esco dal loop

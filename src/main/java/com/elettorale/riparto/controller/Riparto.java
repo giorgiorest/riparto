@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.elettorale.riparto.calcolo.RipartoCamera;
 import com.elettorale.riparto.dto.Base;
+import com.elettorale.riparto.utils.Territorio;
 
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -51,9 +52,10 @@ public class Riparto {
 			
 			List<Base> baseList = getData(idEnteItalia);
 			List<Base> baseListCandi = getDataCandidati(idEnteItalia);
+			List<Territorio> listTerritori = getSeggi(idEnteItalia);
 			log.info("DATI RECUPERATI--------");
 			
-			RipartoCamera riparto = new RipartoCamera(baseList, baseListCandi);
+			RipartoCamera riparto = new RipartoCamera(baseList, baseListCandi, listTerritori);
 			
 			path = riparto.eseguiRiparto(false, dataElezione);
 			
@@ -71,12 +73,77 @@ public class Riparto {
 				+ ", " + path);
 	}
 
+	public List<Territorio> getSeggi(Integer idEnteItalia){
+		String getSeggi = "SELECT\r\n"
+				+ "	TERPA.TERPA_SEQ_TERRPARTECIPANTE_PK ID_PLURI,\r\n"
+				+ "	TERPA.TERPA_DESCR_ENTE DESC_PLURI,\r\n"
+				+ " SEGGI.SEGGI_NUM_SEGGI,\r\n"
+				+ " TERPA.TERPA_COD_ENTE_LIVELLO COD_ENTE_PLURI,\r\n"
+				+ "	TERPACP.TERPA_SEQ_TERRPARTECIPANTE_PK ID_CIRC,\r\n"
+				+ "	TERPACP.TERPA_DESCR_ENTE DESC_CIRC,\r\n"
+				+ " TERPACP.TERPA_COD_ENTE_LIVELLO\r\n"
+				+ "FROM\r\n"
+				+ "	CL_TERPA_TERRPARTECIPANTI TERPA\r\n"
+				+ "LEFT JOIN CL_SEGGI_SEGGI SEGGI ON\r\n"
+				+ "	SEGGI.SEGGI_TERPA_TERRPARTECIPANTE = TERPA.TERPA_SEQ_TERRPARTECIPANTE_PK\r\n"
+				+ "LEFT JOIN CL_TERPA_TERRPARTECIPANTI TERPACP ON\r\n"
+				+ "	TERPACP.TERPA_SEQ_TERRPARTECIPANTE_PK = TERPA.TERPA_TERPA_TERRPARTECIPANTE\r\n"
+				+ "LEFT JOIN CL_TERPA_TERRPARTECIPANTI TERPACIRC ON\r\n"
+				+ "	TERPACIRC.TERPA_SEQ_TERRPARTECIPANTE_PK = TERPACP.TERPA_TERPA_TERRPARTECIPANTE\r\n"
+				+ "WHERE\r\n"
+				+ "	TERPA.TERPA_GERTE_GERARCTERRITORIO = 11\r\n"
+				+ "CONNECT BY\r\n"
+				+ "	PRIOR TERPA.TERPA_SEQ_TERRPARTECIPANTE_PK = TERPA.TERPA_TERPA_TERRPARTECIPANTE\r\n"
+				+ "START WITH\r\n"
+				+ "	TERPA.TERPA_SEQ_TERRPARTECIPANTE_PK = ? ";
+		
+		Object[] parameters = { idEnteItalia };
+
+		List<Territorio> baseList = new ArrayList<>();
+
+		AtomicInteger i = new AtomicInteger();
+
+		jdbcTemplate.query(getSeggi, parameters, new ResultSetExtractor<List<Object[]>>() {
+
+			@Override
+			public List<Object[]> extractData(ResultSet rs) throws SQLException, DataAccessException {
+				while (rs.next()) {
+
+					i.set(1);
+
+					Territorio pluri = new Territorio();
+
+					pluri.setId(rs.getInt(i.getAndIncrement()));
+					pluri.setDescrizione(rs.getString(i.getAndIncrement()));
+					pluri.setNumSeggi(rs.getInt(i.getAndIncrement()));
+					pluri.setCodEnte(Integer.parseInt(rs.getString(i.getAndIncrement())));
+					
+					Territorio circ = new Territorio();
+
+					circ.setId(rs.getInt(i.getAndIncrement()));
+					circ.setDescrizione(rs.getString(i.getAndIncrement()));
+					circ.setCodEnte(Integer.parseInt(rs.getString(i.getAndIncrement())));
+					
+					pluri.setPadre(circ);
+					
+					baseList.add(pluri);
+
+				}
+				return null;
+			}
+		});
+
+		return baseList;
+	};
+	
 	@SuppressWarnings("deprecation")
 	public List<Base> getDataCandidati(Integer idEnteItalia){
 		String getCandiUnu = "SELECT \r\n"
 				+ "	V.VOTLE_CANLE_CANDIDATO,\r\n"
 				+ "	V.VOTLE_CANLE_TERRPARTECIPANTE,\r\n"
 				+ "	T.TERPA_DESCR_ENTE,\r\n"
+				+ "	PADRE.TERPA_SEQ_TERRPARTECIPANTE_PK ,\r\n"
+				+ "	PADRE.TERPA_DESCR_ENTE, \r\n"
 				+ "	C.CANDI_DATA_NASCITA, \r\n"
 				+ "	L.LISTE_SEQ_LISTA_PK,\r\n"
 				+ "	CONTR.CONTR_AGGRE_AGGREGATIRIPARTO,\r\n"
@@ -84,7 +151,8 @@ public class Riparto {
 				+ "	SUM(V.VOTLE_NUM_VOTI_SOLO_CANDID_VAL) VOTI_SOLO_CAND\r\n"
 				+ "FROM CL_VOTLE_VOTILEADER V\r\n"
 				+ "JOIN CL_SCRUT_SCRUTINI S ON S.SCRUT_SEQ_SCRUTINIO_PK  = V.VOTLE_SCRUT_SCRUTINIO \r\n"
-				+ "JOIN CL_TERPA_TERRPARTECIPANTI T ON T.TERPA_SEQ_TERRPARTECIPANTE_PK  = V.VOTLE_CANLE_TERRPARTECIPANTE \r\n"
+				+ "JOIN CL_TERPA_TERRPARTECIPANTI T ON T.TERPA_SEQ_TERRPARTECIPANTE_PK  = V.VOTLE_CANLE_TERRPARTECIPANTE\r\n"
+				+ "JOIN CL_TERPA_TERRPARTECIPANTI PADRE ON PADRE.TERPA_SEQ_TERRPARTECIPANTE_PK  = T.TERPA_TERPA_TERRPARTECIPANTE \r\n"
 				+ "JOIN CL_CANDI_CANDIDATI C ON C.CANDI_SEQ_CANDIDATO_PK  = V.VOTLE_CANLE_CANDIDATO \r\n"
 				+ "JOIN CL_CALIS_CANDIDATOLISTA CAL ON CAL.CALIS_CANLE_CANDIDATO = C.CANDI_SEQ_CANDIDATO_PK \r\n"
 				+ "JOIN CL_LISTE_LISTE L ON L.LISTE_SEQ_LISTA_PK  = CAL.CALIS_LISTE_LISTA \r\n"
@@ -103,9 +171,11 @@ public class Riparto {
 				+ "GROUP BY V.VOTLE_CANLE_CANDIDATO ,\r\n"
 				+ "V.VOTLE_CANLE_TERRPARTECIPANTE , \r\n"
 				+ "T.TERPA_DESCR_ENTE,\r\n"
+				+ "PADRE.TERPA_SEQ_TERRPARTECIPANTE_PK ,\r\n"
+				+ "PADRE.TERPA_DESCR_ENTE, \r\n"
 				+ "C.CANDI_DATA_NASCITA,\r\n"
 				+ "L.LISTE_SEQ_LISTA_PK, \r\n"
-				+ "CONTR.CONTR_AGGRE_AGGREGATIRIPARTO ";
+				+ "CONTR.CONTR_AGGRE_AGGREGATIRIPARTO";
 		
 		Object[] parameters = { idEnteItalia };
 
@@ -126,6 +196,8 @@ public class Riparto {
 					b.setIdCandidato(rs.getInt(i.getAndIncrement()));
 					b.setIdTerpaCandidato(rs.getInt(i.getAndIncrement()));
 					b.setDescTerpaCandidato(rs.getString(i.getAndIncrement()));
+					b.setIdCollegioPluri(rs.getInt(i.getAndIncrement()));
+					b.setDescCollegioPluri(rs.getString(i.getAndIncrement()));
 					b.setDataNascita(rs.getDate(i.getAndIncrement()));
 					b.setIdLista(rs.getInt(i.getAndIncrement()));
 					b.setIdAggregatoRiparto(rs.getInt(i.getAndIncrement()));
