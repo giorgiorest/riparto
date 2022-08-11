@@ -4,6 +4,7 @@ public enum Header {
 	
 	DESC_LISTA("Descrizione lista"),
 	CIFRA("Cifra lista"),
+	CAND_UNI("Cand UNI"),
 	PERC_CIFRA("% Lista"),
 	PART_RIPARTO_LISTA("Partecipa"),
 	CIFRA_COALI("Cifra coalizione"),

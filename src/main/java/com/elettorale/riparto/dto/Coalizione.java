@@ -15,6 +15,7 @@ public class Coalizione {
 	private BigDecimal percentualeCoalizione;
 	private String partecipaRipartoCoalizione;
 	private Boolean isCoalizione;
+	private Integer numCandUniEletti;
 	
 	public Coalizione() {
 		// TODO Auto-generated constructor stub
@@ -65,6 +66,14 @@ public class Coalizione {
 	}
 	public void setIdCoalizone(Integer idCoalizone) {
 		this.idCoalizone = idCoalizone;
+	}
+
+	public Integer getNumCandUniEletti() {
+		return numCandUniEletti;
+	}
+
+	public void setNumCandUniEletti(Integer numCandUniEletti) {
+		this.numCandUniEletti = numCandUniEletti;
 	}
 	
 	

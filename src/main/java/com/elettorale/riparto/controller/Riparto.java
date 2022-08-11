@@ -152,7 +152,8 @@ public class Riparto {
 				+ "	SUM(V.VOTLE_NUM_VOTI_SOLO_CANDID_VAL) VOTI_SOLO_CAND,\r\n"
 				+ "	SCO.SCORP_VAL_SCORPORO ,\r\n"
 				+ "	CANLE.CANLE_FLAG_ELETTO,	\r\n"
-				+ "	SUM(VOTLI.VOTLI_NUM_VOTI_VAL)\r\n"
+				+ "	SUM(VOTLI.VOTLI_NUM_VOTI_VAL),\r\n"
+				+ "	CO.COTER_COALI_COALIZIONE \r\n"
 				+ "FROM CL_VOTLE_VOTILEADER V\r\n"
 				+ "JOIN CL_CANLE_CANDIDLEADER CANLE ON CANLE.CANLE_CANDI_CANDIDATO  = V.VOTLE_CANLE_CANDIDATO \r\n"
 				+ "							AND CANLE.CANLE_TERPA_TERRPARTECIPANTE  = V.VOTLE_CANLE_TERRPARTECIPANTE \r\n"
@@ -162,6 +163,7 @@ public class Riparto {
 				+ "JOIN CL_CANDI_CANDIDATI C ON C.CANDI_SEQ_CANDIDATO_PK  = V.VOTLE_CANLE_CANDIDATO \r\n"
 				+ "JOIN CL_CALIS_CANDIDATOLISTA CAL ON CAL.CALIS_CANLE_CANDIDATO = C.CANDI_SEQ_CANDIDATO_PK \r\n"
 				+ "JOIN CL_LISTE_LISTE L ON L.LISTE_SEQ_LISTA_PK  = CAL.CALIS_LISTE_LISTA \r\n"
+				+ "JOIN CL_COTER_COALITERPA CO ON CO.COTER_LISTE_LISTA  = L.LISTE_SEQ_LISTA_PK \r\n"
 				+ "JOIN CL_VOTLI_VOTILISTA VOTLI ON VOTLI.VOTLI_LISTE_LISTA = CAL.CALIS_LISTE_LISTA \r\n"
 				+ "							 AND	VOTLI.VOTLI_SCRUT_SCRUTINIO = S.SCRUT_SEQ_SCRUTINIO_PK \r\n"
 				+ "LEFT JOIN CL_SCORP_SCORPORO SCO ON SCO.SCORP_CALIS_CANDIDATO = V.VOTLE_CANLE_CANDIDATO \r\n"
@@ -189,7 +191,8 @@ public class Riparto {
 				+ "L.LISTE_DESCR_LISTA ,\r\n"
 				+ "CONTR.CONTR_AGGRE_AGGREGATIRIPARTO,\r\n"
 				+ "SCO.SCORP_VAL_SCORPORO ,\r\n"
-				+ "CANLE.CANLE_FLAG_ELETTO";
+				+ "CANLE.CANLE_FLAG_ELETTO,\r\n"
+				+ "CO.COTER_COALI_COALIZIONE";
 		
 		Object[] parameters = { idEnteItalia };
 
@@ -221,6 +224,7 @@ public class Riparto {
 					b.setScorporo(rs.getInt(i.getAndIncrement()));
 					b.setEletto(rs.getString(i.getAndIncrement()));
 					b.setVotiLista(rs.getInt(i.getAndIncrement()));
+					b.setCoterCoali(rs.getInt(i.getAndIncrement()));
 					
 					baseList.add(b);
 

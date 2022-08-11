@@ -69,6 +69,10 @@ public class RipartoCamera extends AppoggioStampa{
 	private Map<Territorio, List<CandidatoUni>> mapTerrCandidati = new HashMap<>();
 	private Map<Territorio, List<CandidatoUni>> mapTerrCandidatiEletti = new HashMap<>();
 	
+	private Map<Integer, Integer> mapCoaliEletti = new HashMap<>();
+	
+	
+	
 	public RipartoCamera(List<Base> list, List<Base> listCandidati, List<Territorio> listTerritori) {
 		this.list = list;
 		this.listCandidati = listCandidati;
@@ -170,6 +174,7 @@ public class RipartoCamera extends AppoggioStampa{
 				cand.setVotiSoloCandidato(b.getVotiSoloCand());
 				cand.setTerritorio(uni);
 				cand.setEletto(b.getEletto().equals("S"));
+				cand.setIdCoalizione(b.getCoterCoali());
 				
 				List<Elemento> liste = new ArrayList<>();
 				
@@ -205,7 +210,7 @@ public class RipartoCamera extends AppoggioStampa{
 				
 				if(uniVincenti.size() == 1) {
 					uniVincenti.stream().findFirst().get().setEletto(true);
-					log.info("Eletto trovato in {}", e.getKey().getDescrizione());
+					log.info("Eletto trovato in {}, idCoali {}", e.getKey().getDescrizione(), uniVincenti.stream().findFirst().get().getIdCoalizione());
 				}else {
 					sortCandidatiDataNascita(uniVincenti);
 					
@@ -220,6 +225,21 @@ public class RipartoCamera extends AppoggioStampa{
 				
 				mapTerrCandidatiEletti.put(e.getKey(), e.getValue());
 			}
+		});
+		
+		
+		//Calcolo eletti nazionali per coalizione
+		mapTerrCandidatiEletti.values().forEach(e->{
+			e.stream().collect(Collectors.groupingBy(CandidatoUni::getIdCoalizione)).entrySet().forEach(l->{
+				Long countEletti = l.getValue().stream().filter(x->x.isEletto()).count();
+				
+				if(mapCoaliEletti.containsKey(l.getKey())) {
+					Integer numEle = mapCoaliEletti.get(l.getKey());
+					mapCoaliEletti.computeIfPresent(l.getKey(), (k,v)-> mapCoaliEletti.get(l.getKey()) + countEletti.intValue());
+				}else {
+					mapCoaliEletti.put(l.getKey(), countEletti.intValue());
+				}
+			});
 		});
 		
 //		if(!ripartoPrevisionale) {
@@ -246,6 +266,7 @@ public class RipartoCamera extends AppoggioStampa{
 //		li.forEach(l->l.setProquota(l.getSeggiQI()+l.getSeggiResti()));
 //		System.out.println();
 		mapTerrCandidati.entrySet().forEach(e->{
+			
 			e.getValue().forEach(candi->{
 				
 				if(candi.getVotiSoloCandidato().compareTo(0) > 0) {
@@ -262,14 +283,14 @@ public class RipartoCamera extends AppoggioStampa{
 					
 					candi.getListe().forEach(listeProquota->{
 						
-						list.stream()
-						.filter(l -> l.getIdCollegioPluri().compareTo(candi.getTerritorio().getPadre().getId()) == 0
-						&& l.getIdAggregatoRiparto().compareTo(listeProquota.getId()) == 0)
-						.forEach(r -> {
-							int proquota = listeProquota.getSeggiQI()+listeProquota.getSeggiResti();
-							r.setProquota(proquota);
-							
-						});
+						list.stream().filter(
+								l -> l.getIdCollegioPluri().compareTo(candi.getTerritorio().getPadre().getId()) == 0
+										&& l.getIdAggregatoRiparto().compareTo(listeProquota.getId()) == 0)
+								.forEach(r -> {
+									int proquota = listeProquota.getProquota() + listeProquota.getSeggiQI() + listeProquota.getSeggiResti();
+									r.setProquota(proquota);
+
+								});
 					});
 				}
 			});
@@ -482,9 +503,11 @@ public class RipartoCamera extends AppoggioStampa{
 			
 			Coalizione coali = new Coalizione(v);
 			coali.setNumVotiCoalizione(v.stream().filter(partecipaRipartoLista().or(partecipaCifraInCoalizione())).mapToInt(Elemento::getCifra).sum());
-			coali.setDescCoalizione(v.stream().map(Elemento::getDescrizione).distinct().collect(Collectors.joining("-")));
+			coali.setDescCoalizione(v.stream().map(Elemento::getDescrizione).distinct().collect(Collectors.joining("/")));
 			coali.setIdCoalizone(k);
 			coali.setIsCoalizione(v.size()> 1);
+			Integer numCandEletti = mapCoaliEletti.containsKey(k) ? (mapCoaliEletti.get(k)) : 0;
+			coali.setNumCandUniEletti(numCandEletti);
 			
 			nazionaliCoaliListe.add(coali);
 		});
@@ -571,7 +594,7 @@ public class RipartoCamera extends AppoggioStampa{
 				});
 				
 				coali = new Coalizione(liste);
-				coali.setDescCoalizione(liste.stream().map(Elemento::getDescrizione).distinct().collect(Collectors.joining("-")));
+				coali.setDescCoalizione(liste.stream().map(Elemento::getDescrizione).distinct().collect(Collectors.joining("/")));
 				coali.setNumVotiCoalizione(liste.stream().mapToInt(Elemento::getCifra).sum());
 				coali.setPartecipaRipartoCoalizione(PartecipaRiparto.SI.toString());
 				coali.setIsCoalizione(liste.size() > 1);

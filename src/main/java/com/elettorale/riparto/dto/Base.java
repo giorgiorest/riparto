@@ -313,9 +313,7 @@ public class Base {
 	public void setProquota(Integer proquota) {
 		this.proquota = proquota;
 	}
-	
-	
-	
+
 
 	
 }

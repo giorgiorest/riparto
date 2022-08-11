@@ -103,7 +103,7 @@ public class AppoggioStampa extends RipartoUtils {
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 12));
 
-		float[] width = { 20, 10, 10, 5, 10, 10, 5, 35 };
+		float[] width = { 20, 10, 10, 10, 5, 10, 10, 5, 25 };
 
 		PdfPTable table = new PdfPTable(width);
 
@@ -121,10 +121,12 @@ public class AppoggioStampa extends RipartoUtils {
 				PdfPCell cell6 = new PdfPCell();
 				PdfPCell cell7 = new PdfPCell();
 				PdfPCell cell8 = new PdfPCell();
+				PdfPCell cell9 = new PdfPCell();
 
 				// LISTA
 				cell.addElement(addParagraph((lista.getDescrizione()+ (lista.isMinoranza() ? " * " : "")), 10));
 				cell2.addElement(addParagraph(String.valueOf(lista.getCifra()), 10));
+				cell9.addElement(addParagraph(String.valueOf(coal.getNumCandUniEletti()), 10));
 				cell3.addElement(addParagraph(String.valueOf(lista.getPercentualeLista()), 10));
 				cell4.addElement(addParagraph(lista.getPartecipaRipartoLista(), 10));
 
@@ -135,10 +137,11 @@ public class AppoggioStampa extends RipartoUtils {
 								Objects.isNull(coal.getPercentualeCoalizione()) ? "" : coal.getPercentualeCoalizione()),
 						10));
 				cell7.addElement(addParagraph(coal.getPartecipaRipartoCoalizione(), 10));
-				cell8.addElement(addParagraph(String.valueOf(coal.getDescCoalizione()), 10));
+				cell8.addElement(addParagraph(String.valueOf(coal.getDescCoalizione()), 7));
 
 				table.addCell(cell);
 				table.addCell(cell2);
+				table.addCell(cell9);
 				table.addCell(cell3);
 				table.addCell(cell4);
 				table.addCell(cell5);
@@ -257,11 +260,15 @@ public class AppoggioStampa extends RipartoUtils {
 			cell4.addElement(addParagraph(String.valueOf(e.getResto()), 10));
 			PdfPCell cell5 = new PdfPCell();
 			cell5.addElement(addParagraph(String.valueOf(e.getSeggiResti()), 10));
+			PdfPCell cell6 = new PdfPCell();
+			cell6.addElement(addParagraph(e.isSorteggioReale() ? "SI" : "", 10));
+			
 			table.addCell(cell);
 			table.addCell(cell2);
 			table.addCell(cell3);
 			table.addCell(cell4);
 			table.addCell(cell5);
+			table.addCell(cell6);
 		});
 
 		table.addCell(new PdfPCell());

@@ -696,7 +696,7 @@ public class RipartoUtils {
 					e1.setParita(true);
 					e2.setParita(true);
 					//Ordino per cifra maggiore
-					return e1.getCifraNazionale().compareTo(e2.getCifraNazionale());
+					return e2.getCifraNazionale().compareTo(e1.getCifraNazionale());
 				}else {
 					//ordino per maggior seggi eccedentari
 					return e2.getDiff().compareTo(e1.getDiff());
@@ -799,6 +799,7 @@ public class RipartoUtils {
 		private boolean paritaVoti;
 		private List<Elemento> liste = new ArrayList<>();
 		private Integer posizione;
+		private Integer idCoalizione;
 		
 		public Integer getId() {
 			return id;
@@ -860,6 +861,12 @@ public class RipartoUtils {
 		}
 		public void setListe(List<Elemento> liste) {
 			this.liste = liste;
+		}
+		public Integer getIdCoalizione() {
+			return idCoalizione;
+		}
+		public void setIdCoalizione(Integer idCoalizione) {
+			this.idCoalizione = idCoalizione;
 		}
 		@Override
 		public String toString() {
