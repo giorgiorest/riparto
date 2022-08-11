@@ -38,6 +38,8 @@ public class Base {
 	private Integer scorporo; 
 	private String eletto;
 	
+	private Integer proquota;
+	
 	public Base() {
 		super();
 	}
@@ -302,6 +304,14 @@ public class Base {
 
 	public void setEletto(String eletto) {
 		this.eletto = eletto;
+	}
+
+	public Integer getProquota() {
+		return proquota;
+	}
+
+	public void setProquota(Integer proquota) {
+		this.proquota = proquota;
 	}
 	
 	

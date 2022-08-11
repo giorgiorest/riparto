@@ -266,13 +266,11 @@ public class RipartoCamera extends AppoggioStampa{
 						.filter(l -> l.getIdCollegioPluri().compareTo(candi.getTerritorio().getPadre().getId()) == 0
 						&& l.getIdAggregatoRiparto().compareTo(listeProquota.getId()) == 0)
 						.forEach(r -> {
-							System.out.println();
+							int proquota = listeProquota.getSeggiQI()+listeProquota.getSeggiResti();
+							r.setProquota(proquota);
 							
 						});
 					});
-					
-					
-					System.out.println();
 				}
 			});
 		});

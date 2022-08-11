@@ -46,7 +46,7 @@ public class RipartoUtils {
 		
 		
 		//PROQUOTA
-		private Integer proquota;
+		private Integer proquota = 0;
 		
 		public Elemento(Elemento e) {
 			this.id = e.getId();
