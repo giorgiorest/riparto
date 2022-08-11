@@ -14,6 +14,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import javax.swing.JSpinner.ListEditor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +66,9 @@ public class RipartoCamera extends AppoggioStampa{
 	
 	List<Territorio> listTerritori;
 	
+	private Map<Territorio, List<CandidatoUni>> mapTerrCandidati = new HashMap<>();
+	private Map<Territorio, List<CandidatoUni>> mapTerrCandidatiEletti = new HashMap<>();
+	
 	public RipartoCamera(List<Base> list, List<Base> listCandidati, List<Territorio> listTerritori) {
 		this.list = list;
 		this.listCandidati = listCandidati;
@@ -89,16 +94,19 @@ public class RipartoCamera extends AppoggioStampa{
 		//Proclama Eletto
 		proclamaEletto();
 		
+		//Calcolo scrorporo
+		determinaScorporo();
+		
 		//PROSPETTO 1
 		List<Coalizione> nazionali = calcolaCifraNazionale();
 		
 		//PROSPETTO 2
 		List<Elemento> ripartoColizioniNazionale = ripartoCoalizioniListeNazionali(nazionali, dataElezione);
+			
+		//PROSPETTO 3
+		List<Elemento> ripartoListeInColizioniNazionale = ripartoTraListeInCoalizione(ripartoColizioniNazionale, nazionali);
 		
 		if(Objects.isNull(bloccoRiparto)) {
-			
-			//PROSPETTO 3
-			List<Elemento> ripartoListeInColizioniNazionale = ripartoTraListeInCoalizione(ripartoColizioniNazionale, nazionali);
 			
 			//PROSPETTO 5
 			ripartoListeCircoscrizione(nazionali);
@@ -137,8 +145,6 @@ public class RipartoCamera extends AppoggioStampa{
 
 	private void proclamaEletto() {
 		
-		Map<Territorio, List<CandidatoUni>> mapTerrCndidati = new HashMap<>();
-		
 		listCandidati.stream().collect(Collectors.groupingBy(Base::getIdTerpaCandidato)).entrySet().forEach(el->{
 			
 			List<CandidatoUni> listCand = new ArrayList<>();
@@ -163,52 +169,113 @@ public class RipartoCamera extends AppoggioStampa{
 				cand.setVoti(b.getVotiTotCand());
 				cand.setVotiSoloCandidato(b.getVotiSoloCand());
 				cand.setTerritorio(uni);
-				cand.setListIdAggregato(candi.getValue().stream().map(Base::getIdAggregatoRiparto).distinct().collect(Collectors.toList()));
+				cand.setEletto(b.getEletto().equals("S"));
+				
+				List<Elemento> liste = new ArrayList<>();
+				
+				candi.getValue().forEach(l->{
+					liste.add(new Elemento(l.getIdAggregatoRiparto(), l.getDescLista(), l.getVotiLista(), null, null, null));
+				});
+				cand.setListe(liste);
 				
 				listCand.add(cand);
 			});
 			
-			mapTerrCndidati.put(uni, listCand);
+			mapTerrCandidati.put(uni, listCand);
 			
 		});
 		
-		mapTerrCndidati.entrySet().forEach(e->{
-			sortCandidati(e.getValue());
-			
-			AtomicInteger position = new AtomicInteger(1);
-			
-			for (int i = 0; i < e.getValue().size(); i++) {
-				CandidatoUni candidato = e.getValue().get(i);
+		mapTerrCandidati.entrySet().forEach(e->{
+			if(!e.getValue().stream().anyMatch(l->l.isEletto())) {
+				sortCandidati(e.getValue());
 				
-				if(candidato.isParitaVoti()) {
-					candidato.setPosizione(position.get());
-				}else {
-					candidato.setPosizione(position.getAndIncrement());
+				AtomicInteger position = new AtomicInteger(1);
+				
+				for (int i = 0; i < e.getValue().size(); i++) {
+					CandidatoUni candidato = e.getValue().get(i);
+					
+					if(candidato.isParitaVoti()) {
+						candidato.setPosizione(position.get());
+					}else {
+						candidato.setPosizione(position.getAndIncrement());
+					}
 				}
-			}
-			
-			List<CandidatoUni> uniVincenti = e.getValue().stream().filter(c->c.getPosizione().compareTo(1) == 0).collect(Collectors.toList());
-			
-			if(uniVincenti.size() == 1) {
-				uniVincenti.stream().findFirst().get().setEletto(true);
-				log.info("Eletto trovato in {}", e.getKey().getDescrizione());
-			}else {
-				sortCandidatiDataNascita(uniVincenti);
 				
-				if(uniVincenti.stream().allMatch(c->c.isSorteggio())) {
-					e.getKey().setSorteggioCollegio(true);
-					log.info("Sorteggio candidati in {}", e.getKey().getDescrizione());
-				}else {
+				List<CandidatoUni> uniVincenti = e.getValue().stream().filter(c->c.getPosizione().compareTo(1) == 0).collect(Collectors.toList());
+				
+				if(uniVincenti.size() == 1) {
 					uniVincenti.stream().findFirst().get().setEletto(true);
-					log.info("Eletto più giovane in {}", e.getKey().getDescrizione());
+					log.info("Eletto trovato in {}", e.getKey().getDescrizione());
+				}else {
+					sortCandidatiDataNascita(uniVincenti);
+					
+					if(uniVincenti.stream().allMatch(c->c.isSorteggio())) {
+						e.getKey().setSorteggioCollegio(true);
+						log.info("Sorteggio candidati in {}", e.getKey().getDescrizione());
+					}else {
+						uniVincenti.stream().findFirst().get().setEletto(true);
+						log.info("Eletto più giovane in {}", e.getKey().getDescrizione());
+					}
 				}
+				
+				mapTerrCandidatiEletti.put(e.getKey(), e.getValue());
 			}
-		
-
 		});
 		
+//		if(!ripartoPrevisionale) {
+//			gestione salvataggio dati flag eletto
+//		}
+	
+	}
+	
+	private void determinaScorporo(){
 		
-		
+//		Elemento e = new Elemento(1, "L1", 13, null, null, null);
+//		Elemento e1 = new Elemento(1, "L2", 20, null, null, null);
+//		Elemento e2 = new Elemento(1, "L3", 27, null, null, null);
+//		Elemento e3 = new Elemento(1, "L4", 40, null, null, null);
+//		
+//		List<Elemento> li = Arrays.asList(e, e1,e2,e3);
+//		Integer votiSoloCand = 20;
+//		Integer sumVoti = li.stream().mapToInt(Elemento::getCifra).sum();
+//		
+//		BigDecimal quozienteDecimale = getQuozienteDecimale(sumVoti, votiSoloCand);
+//		
+//		Quoziente q = assegnaseggiQIMassimiResti(li, votiSoloCand, sumVoti,TipoOrdinamento.RESTI_PROQUOTA, quozienteDecimale);
+//		
+//		li.forEach(l->l.setProquota(l.getSeggiQI()+l.getSeggiResti()));
+//		System.out.println();
+		mapTerrCandidati.entrySet().forEach(e->{
+			e.getValue().forEach(candi->{
+				
+				if(candi.getVotiSoloCandidato().compareTo(0) > 0) {
+					
+					//Calcolo Tot votiCoali
+					Integer sumVoti = candi.getListe().stream().mapToInt(Elemento::getCifra).sum();
+					
+					//recupera voti da db
+					Integer votiSoloCand  = candi.getVotiSoloCandidato();
+					
+					BigDecimal quozienteDecimale = getQuozienteDecimale(sumVoti, votiSoloCand);
+					
+					assegnaseggiQIMassimiResti(candi.getListe(), votiSoloCand, sumVoti,TipoOrdinamento.RESTI_PROQUOTA, quozienteDecimale);
+					
+					candi.getListe().forEach(listeProquota->{
+						
+						list.stream()
+						.filter(l -> l.getIdCollegioPluri().compareTo(candi.getTerritorio().getPadre().getId()) == 0
+						&& l.getIdAggregatoRiparto().compareTo(listeProquota.getId()) == 0)
+						.forEach(r -> {
+							System.out.println();
+							
+						});
+					});
+					
+					
+					System.out.println();
+				}
+			});
+		});
 	}
 
 	private void ripartoListeCollegioPluri() {
@@ -219,11 +286,11 @@ public class RipartoCamera extends AppoggioStampa{
 
 			Integer numVoti = m.getValue().stream().mapToInt(Elemento::getCifra).sum();
 			
-			Quoziente quozEletCirc = getQuoziente(numVoti, m.getKey().getNumSeggi(), null);
+			Quoziente quozEletCirc = getQuoziente(numVoti, m.getKey().getNumSeggi(), null, null);
 			
-			m.getValue().forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null)));
+			m.getValue().forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null, null)));
 			
-			assegnaseggiQIMassimiResti(m.getValue(), m.getKey().getNumSeggi(), numVoti, TipoOrdinamento.DECIMALI);
+			assegnaseggiQIMassimiResti(m.getValue(), m.getKey().getNumSeggi(), numVoti, TipoOrdinamento.DECIMALI, null);
 			
 			try {
 				generaProspetto5_10_15(m.getKey().getDescrizione(), m.getValue(), quozEletCirc.getQuoziente(), m.getKey().getNumSeggi(), numVoti, 15);
@@ -271,9 +338,6 @@ public class RipartoCamera extends AppoggioStampa{
 		
 		List<Integer> idsCoalizioni = new ArrayList<>();
 		
-//		idsCoalizioni.addAll(listProspetto9.stream().map(e->e.getDeficitaria().getIdCoalizione()).distinct().collect(Collectors.toList()));
-//		idsCoalizioni.addAll(listProspetto9.stream().map(e->e.getEccedntaria().getIdCoalizione()).distinct().collect(Collectors.toList()));
-		
 		idsCoalizioni.addAll(listProspetto6.stream().map(x->x.getId()).distinct().collect(Collectors.toList()));
 		
 		circoscrizioni.forEach(ente->{
@@ -294,14 +358,14 @@ public class RipartoCamera extends AppoggioStampa{
 				Integer numSeggi = elements.stream().filter(r->r.getIdCoalizione().compareTo(coal.getIdCoalizone()) == 0).collect(Collectors.toList()).stream().mapToInt(l -> l.getSeggiQI() + l.getSeggiDecimali()
 						+ (Objects.isNull(l.getSeggioCompensazione()) ? 0 : l.getSeggioCompensazione())).sum();
 
-				Quoziente quozEletCirc = getQuoziente(numVoti,numSeggi, null);
+				Quoziente quozEletCirc = getQuoziente(numVoti,numSeggi, null, null);
 				
-				listeInCoalizione.forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null)));
+				listeInCoalizione.forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null, null)));
 				
 				Quoziente q = new Quoziente();
 
 				if(numSeggi > 0) {
-					q = assegnaseggiQIMassimiResti(listeInCoalizione, numSeggi, numVoti,TipoOrdinamento.DECIMALI);
+					q = assegnaseggiQIMassimiResti(listeInCoalizione, numSeggi, numVoti,TipoOrdinamento.DECIMALI, null);
 				}
 				
 				listeInCoalizioneAccumulator.addAll(listeInCoalizione);
@@ -554,7 +618,6 @@ public class RipartoCamera extends AppoggioStampa{
 				elements.add(new Elemento(null, e.getDescCoalizione(), e.getNumVotiCoalizione(), null,
 						Arrays.asList(e.getDescCoalizione()), e.getIdCoalizone()));
 			}
-			
 		});
 		
 		//Calcolo Tot votiCoali
@@ -563,14 +626,13 @@ public class RipartoCamera extends AppoggioStampa{
 		//recupera voti da db
 		Integer numSeggi  = listTerritori.stream().mapToInt(Territorio::getNumSeggi).sum();
 
-		Quoziente q = assegnaseggiQIMassimiResti(elements, numSeggi, sumVotiCOali,TipoOrdinamento.RESTI);
+		Quoziente q = assegnaseggiQIMassimiResti(elements, numSeggi, sumVotiCOali,TipoOrdinamento.RESTI, null);
 		
 		generaProspetto2(elements, sumVotiCOali, q.getQuoziente(), 2, null, numSeggi);
 		
 		//controllo eventuale blocco da riparto nazionale per parita di cifra
-		if(elements.stream().anyMatch(l->l.getSorteggio())) {
+		if(elements.stream().anyMatch(l->l.isSorteggioReale())) {
 			this.bloccoRiparto = BloccoRiparto.BLOCCO_RIPARTO_NAZIONALE_PARITA_CIFRE;
-			return elements;
 		}
 
 		creazioneMappaLivelloCircoscrizione(nazionali);
@@ -595,7 +657,7 @@ public class RipartoCamera extends AppoggioStampa{
 			Integer numSeggiDaAssegnare = ripartoColizioniNazionale.stream().filter(x->x.getIdCoalizione().compareTo(coal.getIdCoalizone()) == 0).mapToInt(a->a.getSeggiQI()+a.getSeggiResti()).sum();
 			Integer totVoti = elements.stream().mapToInt(Elemento::getCifra).sum();
 			
-			Quoziente q = assegnaseggiQIMassimiResti(elements, numSeggiDaAssegnare, totVoti, TipoOrdinamento.RESTI);
+			Quoziente q = assegnaseggiQIMassimiResti(elements, numSeggiDaAssegnare, totVoti, TipoOrdinamento.RESTI, null);
 			
 			ret.addAll(elements);
 			
@@ -639,13 +701,13 @@ public class RipartoCamera extends AppoggioStampa{
 			
 			Integer numVoti = elements.stream().mapToInt(Elemento::getCifra).sum();
 			
-			Quoziente quozEletCirc = getQuoziente(numVoti, x.getKey().getNumSeggi(), null);
+			Quoziente quozEletCirc = getQuoziente(numVoti, x.getKey().getNumSeggi(), null, null);
 			
-			elements.forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null)));
+			elements.forEach(e->e.setQuoziente(getQuoziente(e.getCifra(), quozEletCirc.getQuoziente(), null, null)));
 			
 			Integer numSeggi = listTerritori.stream().filter(l->l.getPadre().getId().compareTo(x.getKey().getId()) == 0).mapToInt(Territorio::getNumSeggi).sum(); 
 					
-			assegnaseggiQIMassimiResti(elements, numSeggi, numVoti, TipoOrdinamento.DECIMALI);
+			assegnaseggiQIMassimiResti(elements, numSeggi, numVoti, TipoOrdinamento.DECIMALI, null);
 			
 			mapCircListeElemento.put(x.getKey(), elements);
 			
@@ -669,12 +731,9 @@ public class RipartoCamera extends AppoggioStampa{
 			
 			mapCircListeElemento.values().stream().flatMap(List::stream)
 					.filter(s -> s.getIdCoalizione().compareTo(l.getIdCoalizione()) == 0).collect(Collectors.toList())
-					.stream().collect(Collectors.groupingBy(Elemento::getIdCoalizione)).entrySet().forEach(m -> {
-						m.getValue().forEach(lis->{
-							
-							lista.add(lis);
-						});
-			});
+					.forEach(m -> {
+						lista.add(m);
+					});
 			
 			Integer totSeggiQI = lista.stream().mapToInt(Elemento::getSeggiQI).sum();
 

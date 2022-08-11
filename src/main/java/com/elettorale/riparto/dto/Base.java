@@ -35,6 +35,9 @@ public class Base {
 	private String flagMinoranza;
 	private Integer ccp;
 	
+	private Integer scorporo; 
+	private String eletto;
+	
 	public Base() {
 		super();
 	}
@@ -283,6 +286,22 @@ public class Base {
 
 	public void setCodEnte(Integer codEnte) {
 		this.codEnte = codEnte;
+	}
+
+	public Integer getScorporo() {
+		return scorporo;
+	}
+
+	public void setScorporo(Integer scorporo) {
+		this.scorporo = scorporo;
+	}
+
+	public String getEletto() {
+		return eletto;
+	}
+
+	public void setEletto(String eletto) {
+		this.eletto = eletto;
 	}
 	
 	

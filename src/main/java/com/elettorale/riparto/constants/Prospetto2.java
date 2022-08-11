@@ -5,7 +5,8 @@ public enum Prospetto2 {
 	CIFRA("Cifra elettorale lista"),
 	SEGGI_QI("Seggi QI"),
 	RESTI("Resti"),
-	SEGGI_RESTI("Seggi Resti");
+	SEGGI_RESTI("Seggi Resti"),
+	SORTEGGIO("Sorteggio");
 
 	private String value;
 	

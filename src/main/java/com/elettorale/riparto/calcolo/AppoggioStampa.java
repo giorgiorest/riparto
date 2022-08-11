@@ -178,7 +178,7 @@ public class AppoggioStampa extends RipartoUtils {
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 15));
 
-		float[] width = { 40, 30, 10, 10, 10 };
+		float[] width = { 40, 20, 10, 10, 10 , 10};
 
 		PdfPTable table = new PdfPTable(width);
 
@@ -197,11 +197,15 @@ public class AppoggioStampa extends RipartoUtils {
 			cell4.addElement(addParagraph(String.valueOf(e.getResto()), 10));
 			PdfPCell cell5 = new PdfPCell();
 			cell5.addElement(addParagraph(String.valueOf(e.getSeggiResti()), 10));
+			PdfPCell cell6 = new PdfPCell();
+			cell6.addElement(addParagraph(e.isSorteggioReale() ? "SI" : "", 10));
+			
 			table.addCell(cell);
 			table.addCell(cell2);
 			table.addCell(cell3);
 			table.addCell(cell4);
 			table.addCell(cell5);
+			table.addCell(cell6);
 		});
 
 		table.addCell(new PdfPCell());
@@ -234,7 +238,7 @@ public class AppoggioStampa extends RipartoUtils {
 		document.add(Chunk.NEWLINE);
 		document.add(addParagraph("", 15));
 
-		float[] width = { 40, 30, 10, 10, 10 };
+		float[] width = { 40, 20, 10, 10, 10, 10 };
 
 		PdfPTable table = new PdfPTable(width);
 

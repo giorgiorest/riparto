@@ -8,7 +8,7 @@ public class General extends RipartoUtils{
 
 	private BigDecimal percentualeLista;
 	private String partecipaRipartoLista;
-	private String partecipaInCoalizione;
+	private String partecipaInCoalizione = "NO";
 	
 	
 	public General() {

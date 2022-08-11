@@ -3,11 +3,14 @@ package com.elettorale.riparto.utils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 import com.elettorale.riparto.dto.General;
@@ -32,6 +35,7 @@ public class RipartoUtils {
 		private Quoziente quoziente;
 		private Integer idCoalizione;
 		private boolean minoranza;
+		private boolean sorteggioReale;
 		
 		//COMPENSAZIONE
 		private Integer ordineSottrazione;
@@ -39,6 +43,10 @@ public class RipartoUtils {
 		private boolean riceveSeggio;
 		private boolean shift;
 		private Integer seggioCompensazione = 0;
+		
+		
+		//PROQUOTA
+		private Integer proquota;
 		
 		public Elemento(Elemento e) {
 			this.id = e.getId();
@@ -61,6 +69,9 @@ public class RipartoUtils {
 			this.resto = resto;
 			this.descrizioni = descrizioni;
 			this.idCoalizione = idCoalizione;
+		}
+		public Elemento() {
+			// TODO Auto-generated constructor stub
 		}
 		public String getDescrizione() {
 			return descrizione;
@@ -169,6 +180,18 @@ public class RipartoUtils {
 		public void setMinoranza(boolean minoranza) {
 			this.minoranza = minoranza;
 		}
+		public Integer getProquota() {
+			return proquota;
+		}
+		public void setProquota(Integer proquota) {
+			this.proquota = proquota;
+		}
+		public boolean isSorteggioReale() {
+			return sorteggioReale;
+		}
+		public void setSorteggioReale(boolean sorteggioReale) {
+			this.sorteggioReale = sorteggioReale;
+		}
 		@Override
 		public String toString() {
 			return this.descrizione+ " "+this.territorio.getDescrizione()+" SEGGI QI:"+this.seggiQI +", SEGGI DEC: "+this.seggiDecimali+", DEC: "+this.quoziente.decimale;
@@ -179,6 +202,7 @@ public class RipartoUtils {
 	protected class Quoziente{
 		//numero di seggi interi
 		private Integer quoziente;
+		private BigDecimal quozienteDecimale;
 		//resto del quoziente
 		private Integer resto;
 		//quoziente decimale
@@ -218,6 +242,12 @@ public class RipartoUtils {
 		}
 		public void setQuozienteAttribuzione(BigDecimal quozienteAttribuzione) {
 			this.quozienteAttribuzione = quozienteAttribuzione;
+		}
+		public BigDecimal getQuozienteDecimale() {
+			return quozienteDecimale;
+		}
+		public void setQuozienteDecimale(BigDecimal quozienteDecimale) {
+			this.quozienteDecimale = quozienteDecimale;
 		}
 		@Override
 		public String toString() {
@@ -262,32 +292,49 @@ public class RipartoUtils {
 
 	protected List<Elemento> sortCustom(List<Elemento> lista, TipoOrdinamento tipoOrdinamento) {
 
-		AtomicBoolean parita = new AtomicBoolean();
+//		AtomicBoolean parita = new AtomicBoolean();
 		
 		switch (tipoOrdinamento) {
 		case RESTI:
 			lista.sort((e1, e2) -> {
-				if(e1.getResto() == (e2.getResto())) {
-					parita.set(true);
+				if(e1.getResto().compareTo((e2.getResto())) == 0 && e1.getCifra().compareTo(e2.getCifra()) == 0) {
+//					parita.set(true);
+					e1.setSorteggio(true);
+					e2.setSorteggio(true);
 				}
 				return e2.getResto().compareTo(e1.getResto());
 			});
 			
-			if(parita.get()) {
-				sortCustom(lista, TipoOrdinamento.CIFRA);
-			}
+//			if(parita.get()) {
+//				sortCustom(lista, TipoOrdinamento.CIFRA);
+//			}
+			break;
+		case RESTI_PROQUOTA:
+			
+			lista.sort((e1, e2) -> {
+				
+				if(e1.getResto().compareTo((e2.getResto())) == 0) {
+					e1.setSorteggio(true);
+					e2.setSorteggio(true);
+				}
+				
+				return e2.getResto().compareTo(e1.getResto());
+			});
+			
 			break;
 		case DECIMALI:
 			lista.sort((e1, e2) -> {
-				if(e1.getQuoziente().getDecimale() == (e2.getQuoziente().getDecimale())) {
-					parita.set(true);
+				if(e1.getQuoziente().getDecimale().compareTo((e2.getQuoziente().getDecimale())) == 0 && e1.getCifra().compareTo(e2.getCifra()) == 0) {
+//					parita.set(true);
+					e1.setSorteggio(true);
+					e2.setSorteggio(true);
 				}
 				return e2.getResto().compareTo(e1.getResto());
 			});
 			
-			if(parita.get()) {
-				sortCustom(lista, TipoOrdinamento.CIFRA);
-			}
+//			if(parita.get()) {
+//				sortCustom(lista, TipoOrdinamento.CIFRA);
+//			}
 			break;
 		case CIFRA:
 			lista.sort((e1, e2) -> {
@@ -331,13 +378,19 @@ public class RipartoUtils {
 		return lista;
 	}
 	
-	protected Quoziente getQuoziente(Integer dividend, Integer divisor, Quoziente quoziente) {
+	protected Quoziente getQuoziente(Integer dividend, Integer divisor, Quoziente quoziente, BigDecimal quozienteDecimale) {
 		try {
 			if(Objects.isNull(quoziente)) {
 				quoziente = new Quoziente();
 			}
 			
-			quoziente.setQuoziente(dividend / divisor);
+			if(Objects.isNull(quozienteDecimale)) {
+				
+				quoziente.setQuoziente(dividend / divisor);
+			}else {
+				quoziente.setQuoziente(BigDecimal.valueOf(dividend).divide(quozienteDecimale, 0, RoundingMode.DOWN).intValue());
+			}
+			quoziente.setQuozienteDecimale(truncateDecimal(BigDecimal.valueOf((double)dividend / divisor), 6));
 			quoziente.setResto(0);
 			quoziente.setQuozienteAttribuzione(truncateDecimal(BigDecimal.valueOf((double)dividend/divisor),6));
 			quoziente.setDecimale(quoziente.getQuozienteAttribuzione().subtract(BigDecimal.valueOf(quoziente.getQuoziente())));
@@ -350,15 +403,35 @@ public class RipartoUtils {
 		return 	quoziente;
 	}
 
+	protected BigDecimal getQuozienteDecimale(Integer dividend, Integer divisor) {
+		try {
+			return truncateDecimal(BigDecimal.valueOf((double)dividend / divisor), 6);
+			
+		} catch (Exception e) {
+			// errore null pointer return quoziente null
+			return 	null;
+		}
+		
+	}
+	
 	protected BigDecimal truncateDecimal(BigDecimal value, int digit) {
 		return value.setScale(digit, RoundingMode.DOWN);
 	}
 	
-	protected Quoziente getQuozienteResto(Integer dividend, Integer divisor, Quoziente quoziente) {
+	protected Quoziente getQuozienteResto(Integer dividend, Integer divisor, Quoziente quoziente, BigDecimal quozienteDecimale) {
 		
 		try {
-			quoziente = this.getQuoziente(dividend, divisor, quoziente);
-			quoziente.setResto(dividend % divisor);
+			if(Objects.isNull(quoziente)) {
+				quoziente = new Quoziente();
+			}
+			quoziente = this.getQuoziente(dividend, divisor, quoziente, quozienteDecimale);
+			
+			if(Objects.isNull(divisor)) {
+				BigDecimal resto =BigDecimal.valueOf(dividend).divideAndRemainder(quozienteDecimale)[1];
+				quoziente.setResto(resto.intValue());
+			}else {
+				quoziente.setResto(dividend % divisor);
+			}
 		} catch (Exception e) {
 			// errore null pointer return quoziente null
 			e.printStackTrace();
@@ -371,12 +444,32 @@ public class RipartoUtils {
 		
 		sortCustom(elements, tipoOrdinamento);
 		boolean fineGiro = false;
+		boolean trovataParita = false;
 		
-		while(numSeggi > 0 && !fineGiro) {
-			for(Elemento e : elements)
-				if(!e.sorteggio && numSeggi > 0) {
+		AtomicInteger numSeggiAtomic = new AtomicInteger(numSeggi);
+		
+		while(numSeggiAtomic.get() > 0 && !fineGiro) {
+			
+			for (Elemento e : elements) {
+				
+				if(/*!e.getSorteggio() && */trovataParita || numSeggiAtomic.get() > 0) {
 					switch (tipoOrdinamento) {
 					case RESTI:
+						//controllo ultimo seggio a sorteggio
+						if((numSeggiAtomic.get() == 1 || trovataParita) && e.getSorteggio()) {
+							numSeggiAtomic.getAndDecrement();
+							e.setSorteggioReale(true);
+							
+							trovataParita = !trovataParita;
+							
+						}else {
+							if(trovataParita) {
+								break;
+							}
+							e.setSeggiResti(e.getSeggiResti() + 1);
+						}
+						break;
+					case RESTI_PROQUOTA:
 						e.setSeggiResti(e.getSeggiResti() + 1);
 						break;
 					case DECIMALI:
@@ -385,7 +478,8 @@ public class RipartoUtils {
 					default:
 						break;
 					}
-					numSeggi--;
+					numSeggiAtomic.getAndDecrement();
+			}
 			}
 			fineGiro = true;
 		}
@@ -394,9 +488,9 @@ public class RipartoUtils {
 	}
 	
 	protected Quoziente assegnaseggiQIMassimiResti(List<Elemento> elements,
-			Integer numSeggiDaAssegnare, Integer totVoti, TipoOrdinamento tipoAssegnazione) {
+			Integer numSeggiDaAssegnare, Integer totVoti, TipoOrdinamento tipoAssegnazione, BigDecimal quozienteDecimale) {
 		try {
-			Quoziente q = getQuozienteResto(totVoti, numSeggiDaAssegnare, null);
+			Quoziente q = getQuozienteResto(totVoti, numSeggiDaAssegnare, null, quozienteDecimale);
 			
 			sortCustom(elements, TipoOrdinamento.CIFRA);
 			
@@ -404,7 +498,13 @@ public class RipartoUtils {
 				elements.stream().findFirst().get().setSeggiQI(numSeggiDaAssegnare);
 			}else {
 				elements.forEach(e->{
-					Quoziente quoziente = getQuozienteResto(e.getCifra(), q.getQuoziente(), null);
+					Quoziente quoziente = null;
+					if(Objects.isNull(quozienteDecimale)) {
+						
+						quoziente = getQuozienteResto(e.getCifra(), q.getQuoziente(), null, quozienteDecimale);
+					}else {
+						quoziente = getQuozienteResto(e.getCifra(), null, null, quozienteDecimale);
+					}
 					
 					e.setSeggiQI(quoziente.getQuoziente());
 					e.setResto(quoziente.getResto());
@@ -412,7 +512,9 @@ public class RipartoUtils {
 			}
 			
 			int seggiRimanenti = elements.stream().mapToInt(Elemento::getSeggiQI).sum();
+			
 			assegnaSeggi(elements, tipoAssegnazione, numSeggiDaAssegnare-seggiRimanenti);
+			
 			return q;
 		} catch (Exception e2) {
 			e2.printStackTrace();
@@ -449,7 +551,8 @@ public class RipartoUtils {
 	protected enum TipoOrdinamento{
 		RESTI,
 		CIFRA,
-		DECIMALI
+		DECIMALI,
+		RESTI_PROQUOTA
 	}
 
 	protected enum Ordinamento{
@@ -694,8 +797,7 @@ public class RipartoUtils {
 		private boolean eletto;
 		private boolean sorteggio;
 		private boolean paritaVoti;
-		private List<Integer> listIdAggregato = new ArrayList<>();
-		private List<Integer> listIdLista = new ArrayList<>();
+		private List<Elemento> liste = new ArrayList<>();
 		private Integer posizione;
 		
 		public Integer getId() {
@@ -728,18 +830,6 @@ public class RipartoUtils {
 		public void setVotiSoloCandidato(Integer votiSoloCandidato) {
 			this.votiSoloCandidato = votiSoloCandidato;
 		}
-		public List<Integer> getListIdAggregato() {
-			return listIdAggregato;
-		}
-		public void setListIdAggregato(List<Integer> listIdAggregato) {
-			this.listIdAggregato = listIdAggregato;
-		}
-		public List<Integer> getListIdLista() {
-			return listIdLista;
-		}
-		public void setListIdLista(List<Integer> listIdLista) {
-			this.listIdLista = listIdLista;
-		}
 		public boolean isEletto() {
 			return eletto;
 		}
@@ -764,6 +854,12 @@ public class RipartoUtils {
 		}
 		public void setParitaVoti(boolean paritaVoti) {
 			this.paritaVoti = paritaVoti;
+		}
+		public List<Elemento> getListe() {
+			return liste;
+		}
+		public void setListe(List<Elemento> liste) {
+			this.liste = liste;
 		}
 		@Override
 		public String toString() {
