@@ -473,7 +473,19 @@ public class RipartoUtils {
 						e.setSeggiResti(e.getSeggiResti() + 1);
 						break;
 					case DECIMALI:
-						e.setSeggiDecimali(e.getSeggiDecimali() + 1);
+						//controllo ultimo seggio a sorteggio
+						if((numSeggiAtomic.get() == 1 || trovataParita) && e.getSorteggio()) {
+							numSeggiAtomic.getAndDecrement();
+							e.setSorteggioReale(true);
+							
+							trovataParita = !trovataParita;
+							
+						}else {
+							if(trovataParita) {
+								break;
+							}
+							e.setSeggiDecimali(e.getSeggiDecimali() + 1);
+						}
 						break;
 					default:
 						break;
